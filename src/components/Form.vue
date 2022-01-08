@@ -210,7 +210,7 @@
                     content: "stop to calculate"
                 }
                 this.connection.send(JSON.stringify(message));
-            }
+            },
         },
         created: function () {
             let self = this
@@ -226,7 +226,13 @@
                         break
                     }
                     case "started": {
+                        let start = new Date().getTime()
                         self.calculationStarted = true
+                        let content = JSON.parse(data.content)
+                        let end = new Date().getTime()
+                        console.log(end - start)
+                        console.log(content)
+                        self.$root.$emit("new_field_data", content)
                         break
                     }
                     case "stopped": {
