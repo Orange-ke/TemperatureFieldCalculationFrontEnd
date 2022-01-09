@@ -226,12 +226,12 @@
                         break
                     }
                     case "started": {
-                        let start = new Date().getTime()
                         self.calculationStarted = true
+                        break
+                    }
+                    case "data_push": {
                         let content = JSON.parse(data.content)
-                        let end = new Date().getTime()
-                        console.log(end - start)
-                        console.log(content)
+                        console.log(data)
                         self.$root.$emit("new_field_data", content)
                         break
                     }

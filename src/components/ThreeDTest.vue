@@ -1,5 +1,12 @@
 <template>
     <div id="container">
+        <el-switch
+                @change="switchVisibility"
+                style="position: absolute; right: 10px; top: 10px; z-index: 999"
+                v-model="visible"
+                active-color="#13ce66"
+                inactive-color="#ff4949">
+        </el-switch>
     </div>
 </template>
 
@@ -19,8 +26,6 @@
                 group: undefined,
                 positions: [],
                 colors: [],
-                w: 256,
-                h: 256,
 
                 container: undefined,
                 width: 0,
@@ -30,6 +35,16 @@
 
                 rOut: undefined,
                 rIn: undefined,
+
+                upLength: 100,
+                downLength: 100,
+                arcLength: 600,
+                xLength: 270,
+                yLength: 42,
+
+                cylinderNum: 14,
+                coolerMaterial: undefined,
+                visible: true,
             }
         },
         methods: {
@@ -126,16 +141,17 @@
                 }
             },
             buildShapes: function () {
-                let color = 0xdddddd
+                let parameters = {color: 0x00BCD4, opacity: 0.3, transparent: true}
                 // outline
-                this.buildOutlineShapeUp(this.rOut, color)
-                this.buildOutlineCurve(this.rOut, this.rIn, color)
-                this.buildOutlineShapeDown(this.rOut, color)
+                this.buildOutlineShapeUp(this.rOut, parameters)
+                this.buildOutlineCurve(this.rOut, this.rIn, parameters)
+                this.buildOutlineShapeDown(this.rOut, parameters)
+                this.buildCooler(this.rOut, this.rIn)
 
                 // internal
-                this.buildInternalShapes(this.rOut, this.rIn)
+                // this.buildInternalShapes(this.rOut, this.rIn)
             },
-            buildOutlineCurve: function (rOut, rIn, color) {
+            buildOutlineCurve: function (rOut, rIn, parameters) {
                 let angle = 90
                 let step = 90 / 600
                 let pts1 = []
@@ -144,9 +160,7 @@
                     pts1.push(new THREE.Vector3(xy.x2, xy.y2, 270 / 2))  // this is the key operation
                 }
                 let geometry1 = new THREE.BufferGeometry().setFromPoints(pts1);
-                let arc1 = new THREE.Line(geometry1, new THREE.LineBasicMaterial({
-                    color: color
-                }));
+                let arc1 = new THREE.Line(geometry1, new THREE.LineBasicMaterial(parameters));
 
                 this.group.add(arc1)
 
@@ -156,9 +170,7 @@
                     pts2.push(new THREE.Vector3(xy.x2, xy.y2, -270 / 2))  // this is the key operation
                 }
                 let geometry2 = new THREE.BufferGeometry().setFromPoints(pts2);
-                let arc2 = new THREE.Line(geometry2, new THREE.LineBasicMaterial({
-                    color: color
-                }));
+                let arc2 = new THREE.Line(geometry2, new THREE.LineBasicMaterial(parameters));
 
                 this.group.add(arc2)
 
@@ -168,9 +180,7 @@
                     pts3.push(new THREE.Vector3(xy.x2, xy.y2, 270 / 2))  // this is the key operation
                 }
                 let geometry3 = new THREE.BufferGeometry().setFromPoints(pts3);
-                let arc3 = new THREE.Line(geometry3, new THREE.LineBasicMaterial({
-                    color: color
-                }));
+                let arc3 = new THREE.Line(geometry3, new THREE.LineBasicMaterial(parameters));
 
                 this.group.add(arc3)
 
@@ -180,14 +190,11 @@
                     pts4.push(new THREE.Vector3(xy.x2, xy.y2, -270 / 2))  // this is the key operation
                 }
                 let geometry4 = new THREE.BufferGeometry().setFromPoints(pts4);
-                let arc4 = new THREE.Line(geometry4, new THREE.LineBasicMaterial({
-                    color: color
-                }));
+                let arc4 = new THREE.Line(geometry4, new THREE.LineBasicMaterial(parameters));
 
                 this.group.add(arc4)
             },
-            buildOutlineShapeUp: function (rOut, color) {
-
+            buildOutlineShapeUp: function (rOut, parameters) {
                 const shape = new THREE.Shape()
                     .moveTo(0, rOut + 100)
                     .lineTo(84 / 2, rOut + 100)
@@ -198,35 +205,35 @@
                 const points = shape.getPoints();
                 const geometryPoints = new THREE.BufferGeometry().setFromPoints(points);
 
-                let line1 = new THREE.Line(geometryPoints, new THREE.LineBasicMaterial({color: color}));
+                let line1 = new THREE.Line(geometryPoints, new THREE.LineBasicMaterial(parameters));
                 line1.position.set(0, 0, -270 / 2);
                 this.group.add(line1);
 
-                let line2 = new THREE.Line(geometryPoints, new THREE.LineBasicMaterial({color: color}));
+                let line2 = new THREE.Line(geometryPoints, new THREE.LineBasicMaterial(parameters));
                 line2.position.set(0, 0, 270 / 2);
                 this.group.add(line2);
 
                 let points1 = []
                 points1.push(new THREE.Vector3(0, rOut + 100, 270 / 2))
                 points1.push(new THREE.Vector3(0, rOut + 100, -270 / 2))
-                this.group.add(this.setLine(points1, color))
+                this.group.add(this.setLine(points1, parameters))
 
                 let points2 = []
                 points2.push(new THREE.Vector3(0, rOut, 270 / 2))
                 points2.push(new THREE.Vector3(0, rOut, -270 / 2))
-                this.group.add(this.setLine(points2, color))
+                this.group.add(this.setLine(points2, parameters))
 
                 let points3 = []
                 points3.push(new THREE.Vector3(84 / 2, rOut + 100, 270 / 2))
                 points3.push(new THREE.Vector3(84 / 2, rOut + 100, -270 / 2))
-                this.group.add(this.setLine(points3, color))
+                this.group.add(this.setLine(points3, parameters))
 
                 let points4 = []
                 points4.push(new THREE.Vector3(84 / 2, rOut, 270 / 2))
                 points4.push(new THREE.Vector3(84 / 2, rOut, -270 / 2))
-                this.group.add(this.setLine(points4, color))
+                this.group.add(this.setLine(points4, parameters))
             },
-            buildOutlineShapeDown: function (rOut, color) {
+            buildOutlineShapeDown: function (rOut, parameters) {
 
                 const shape = new THREE.Shape()
                     .moveTo(rOut, 0)
@@ -238,38 +245,82 @@
                 const points = shape.getPoints();
                 const geometryPoints = new THREE.BufferGeometry().setFromPoints(points);
 
-                let line1 = new THREE.Line(geometryPoints, new THREE.LineBasicMaterial({color: color}));
+                let line1 = new THREE.Line(geometryPoints, new THREE.LineBasicMaterial(parameters));
                 line1.position.set(0, 0, -270 / 2);
                 this.group.add(line1);
 
-                let line2 = new THREE.Line(geometryPoints, new THREE.LineBasicMaterial({color: color}));
+                let line2 = new THREE.Line(geometryPoints, new THREE.LineBasicMaterial(parameters));
                 line2.position.set(0, 0, 270 / 2);
                 this.group.add(line2);
 
                 let points1 = []
                 points1.push(new THREE.Vector3(rOut + 100, 0, 270 / 2))
                 points1.push(new THREE.Vector3(rOut + 100, 0, -270 / 2))
-                this.group.add(this.setLine(points1, color))
+                this.group.add(this.setLine(points1, parameters))
 
                 let points2 = []
                 points2.push(new THREE.Vector3(rOut, 0, 270 / 2))
                 points2.push(new THREE.Vector3(rOut, 0, -270 / 2))
-                this.group.add(this.setLine(points2, color))
+                this.group.add(this.setLine(points2, parameters))
 
                 let points3 = []
                 points3.push(new THREE.Vector3(rOut + 100, 84 / 2, 270 / 2))
                 points3.push(new THREE.Vector3(rOut + 100, 84 / 2, -270 / 2))
-                this.group.add(this.setLine(points3, color))
+                this.group.add(this.setLine(points3, parameters))
 
                 let points4 = []
                 points4.push(new THREE.Vector3(rOut, 84 / 2, 270 / 2))
                 points4.push(new THREE.Vector3(rOut, 84 / 2, -270 / 2))
-                this.group.add(this.setLine(points4, color))
+                this.group.add(this.setLine(points4, parameters))
             },
-            setLine: function (points, color) {
-                const material = new THREE.LineBasicMaterial({ //0xf55600
-                    color: color
-                });
+            buildCooler: function(rOut, rIn) {
+                const group = new THREE.Group()
+                this.coolerMaterial = new THREE.MeshBasicMaterial( {color: 0x00BCD4, opacity: 0.3, transparent: true} );
+                const geometry = new THREE.BoxGeometry( 42, 100, this.xLength );
+
+                const cube1 = new THREE.Mesh( geometry, this.coolerMaterial  );
+                cube1.position.set(-25, rOut + this.upLength / 2, 0)
+                group.add(cube1)
+
+                const cube2 = new THREE.Mesh( geometry, this.coolerMaterial  );
+                cube2.position.set(this.yLength + 26, rOut + this.upLength / 2, 0)
+                group.add(cube2)
+
+                let angle = 90
+                let step = 90 / this.arcLength
+
+                const geometryCylinder = new THREE.CylinderGeometry( 10, 10, this.xLength, this.xLength );
+                for (let i = 1; i < this.arcLength; i += this.arcLength / this.cylinderNum) {
+                    let xy1 = this.calculateXY(rOut, rOut, rOut + 14, (angle - i * step) - 180)
+                    const cylinder1 = new THREE.Mesh( geometryCylinder, this.coolerMaterial  );
+                    cylinder1.rotateX(90 * Math.PI / 180)
+                    cylinder1.position.set(xy1.x2, xy1.y2, 0)
+                    group.add(cylinder1)
+
+                    let xy2 = this.calculateXY(rOut, rOut, rIn - 14, (angle - i * step) - 180)
+                    const cylinder2 = new THREE.Mesh( geometryCylinder, this.coolerMaterial  );
+                    cylinder2.rotateX(90 * Math.PI / 180)
+                    cylinder2.position.set(xy2.x2, xy2.y2, 0)
+                    group.add(cylinder2)
+                }
+
+                for (let i = this.downLength / 2; i <= this.downLength; i += this.downLength / 2) {
+                    const cylinder1 = new THREE.Mesh( geometryCylinder, this.coolerMaterial  );
+                    cylinder1.rotateX(90 * Math.PI / 180)
+                    cylinder1.position.set(rOut + i, -14, 0)
+                    group.add(cylinder1)
+
+                    const cylinder2 = new THREE.Mesh( geometryCylinder, this.coolerMaterial  );
+                    cylinder2.rotateX(90 * Math.PI / 180)
+                    cylinder2.position.set(rOut + i, this.yLength + 14, 0)
+                    group.add(cylinder2)
+                }
+
+                // material.visible = false
+                this.group.add(group)
+            },
+            setLine: function (points, parameters) {
+                const material = new THREE.LineBasicMaterial(parameters);
                 const geometry = new THREE.BufferGeometry().setFromPoints(points)
                 return new THREE.Line(geometry, material)
             },
@@ -291,7 +342,7 @@
                     for (let i = 0; i < n; i++) {
                         for (let j = 0; j < mUp; j++) {
                             // colors
-                            const arr = this.heatmap.pickColor(Math.floor(700 - (1550 - data.up.left[i][j] / 2) * 20) % 700)
+                            const arr = this.heatmap.pickColor(Math.floor(data.up.left[i][j] / 2 - 101) % 700)
                             const vx = arr[0] / 255
                             const vy = arr[1] / 255
                             const vz = arr[2] / 255
@@ -303,7 +354,7 @@
                     for (let i = 0; i < n; i++) {
                         for (let j = 0; j < mUp; j++) {
                             // colors
-                            const arr = this.heatmap.pickColor(Math.floor(700 - (1550 - data.up.right[i][j] / 2) * 20) % 700)
+                            const arr = this.heatmap.pickColor(Math.floor(data.up.right[i][j] / 2 - 101) % 700)
 
                             const vx = arr[0] / 255
                             const vy = arr[1] / 255
@@ -316,7 +367,7 @@
                     for (let i = 0; i < k; i++) {
                         for (let j = 0; j < mUp; j++) {
                             // colors
-                            const arr = this.heatmap.pickColor(Math.floor(700 - (1550 - data.up.front[i][j] / 2) * 20) % 700)
+                            const arr = this.heatmap.pickColor(Math.floor(data.up.front[i][j] / 2 - 101) % 700)
 
                             const vx = arr[0] / 255
                             const vy = arr[1] / 255
@@ -329,7 +380,7 @@
                     for (let i = 0; i < k; i++) {
                         for (let j = 0; j < mUp; j++) {
                             // colors
-                            const arr = this.heatmap.pickColor(Math.floor(700 - (1550 - data.up.back[i][j] / 2) * 20) % 700)
+                            const arr = this.heatmap.pickColor(Math.floor(data.up.back[i][j] / 2 - 101) % 700)
 
                             const vx = arr[0] / 255
                             const vy = arr[1] / 255
@@ -342,7 +393,7 @@
                     for (let i = 0; i < k; i++) {
                         for (let j = 0; j < n; j++) {
                             // colors
-                            const arr = this.heatmap.pickColor(Math.floor(700 - (1550 - data.up.up[j][i] / 2) * 20) % 700)
+                            const arr = this.heatmap.pickColor(Math.floor(data.up.up[j][i] / 2 - 101) % 700)
 
                             const vx = arr[0] / 255
                             const vy = arr[1] / 255
@@ -358,7 +409,7 @@
                     for (let i = 0; i < n; i++) {
                         for (let j = 0; j < a; j++) {
                             // colors
-                            const arr = this.heatmap.pickColor(Math.floor(700 - (1550 - data.arc.left[i][j] / 2) * 20) % 700)
+                            const arr = this.heatmap.pickColor(Math.floor(data.arc.left[i][j] / 2 - 101) % 700)
                             const vx = arr[0] / 255
                             const vy = arr[1] / 255
                             const vz = arr[2] / 255
@@ -370,7 +421,7 @@
                     for (let i = 0; i < n; i++) {
                         for (let j = 0; j < a; j++) {
                             // colors
-                            const arr = this.heatmap.pickColor(Math.floor(700 - (1550 - data.arc.right[i][j] / 2) * 20) % 700)
+                            const arr = this.heatmap.pickColor(Math.floor(data.arc.right[i][j] / 2 - 101) % 700)
                             const vx = arr[0] / 255
                             const vy = arr[1] / 255
                             const vz = arr[2] / 255
@@ -382,7 +433,7 @@
                     for (let i = 0; i < k; i++) {
                         for (let j = 0; j < a; j++) {
                             // colors
-                            const arr = this.heatmap.pickColor(Math.floor(700 - (1550 - data.arc.back[i][j] / 2) * 20) % 700)
+                            const arr = this.heatmap.pickColor(Math.floor(data.arc.back[i][j] / 2 - 101) % 700)
                             const vx = arr[0] / 255
                             const vy = arr[1] / 255
                             const vz = arr[2] / 255
@@ -394,7 +445,7 @@
                     for (let i = 0; i < k; i++) {
                         for (let j = 0; j < a; j++) {
                             // colors
-                            const arr = this.heatmap.pickColor(Math.floor(700 - (1550 - data.arc.front[i][j] / 2) * 20) % 700)
+                            const arr = this.heatmap.pickColor(Math.floor(data.arc.front[i][j] / 2 - 101) % 700)
                             const vx = arr[0] / 255
                             const vy = arr[1] / 255
                             const vz = arr[2] / 255
@@ -409,7 +460,7 @@
                     for (let i = 0; i < mDown; i++) {
                         for (let j = 0; j < n; j++) {
                             // colors
-                            const arr = this.heatmap.pickColor(Math.floor(700 - (1550 - data.down.left[j][i] / 2) * 20) % 700)
+                            const arr = this.heatmap.pickColor(Math.floor(data.down.left[j][i] / 2 - 101) % 700)
                             const vx = arr[0] / 255
                             const vy = arr[1] / 255
                             const vz = arr[2] / 255
@@ -421,7 +472,7 @@
                     for (let i = 0; i < mDown; i++) {
                         for (let j = 0; j < n; j++) {
                             // colors
-                            const arr = this.heatmap.pickColor(Math.floor(700 - (1550 - data.down.right[j][i] / 2) * 20) % 700)
+                            const arr = this.heatmap.pickColor(Math.floor(data.down.right[j][i] / 2 - 101) % 700)
 
                             const vx = arr[0] / 255
                             const vy = arr[1] / 255
@@ -434,7 +485,7 @@
                     for (let i = 0; i < k; i++) {
                         for (let j = 0; j < mDown; j++) {
                             // colors
-                            const arr = this.heatmap.pickColor(Math.floor(700 - (1550 - data.down.back[i][j] / 2) * 20) % 700)
+                            const arr = this.heatmap.pickColor(Math.floor(data.down.back[i][j] / 2 - 101) % 700)
 
                             const vx = arr[0] / 255
                             const vy = arr[1] / 255
@@ -447,7 +498,7 @@
                     for (let i = 0; i < k; i++) {
                         for (let j = 0; j < mDown; j++) {
                             // colors
-                            const arr = this.heatmap.pickColor(Math.floor(700 - (1550 - data.down.front[i][j] / 2) * 20) % 700)
+                            const arr = this.heatmap.pickColor(Math.floor(data.down.front[i][j] / 2 - 101) % 700)
 
                             const vx = arr[0] / 255
                             const vy = arr[1] / 255
@@ -460,7 +511,7 @@
                     for (let i = 0; i < k; i++) {
                         for (let j = 0; j < n; j++) {
                             // colors
-                            const arr = this.heatmap.pickColor(Math.floor(700 - (1550 - data.down.down[j][i] / 2) * 20) % 700)
+                            const arr = this.heatmap.pickColor(Math.floor(data.down.down[j][i] / 2 - 101) % 700)
 
                             const vx = arr[0] / 255
                             const vy = arr[1] / 255
@@ -482,6 +533,7 @@
                 let k = 2700 / 5 / 2
                 let a = 300
                 let hk = k / 2
+                let initialColor = 50
 
                 { // 结晶器部分
                     // left
@@ -493,7 +545,7 @@
                             this.positions.push(x, y, hk)
 
                             // colors
-                            const arr = this.heatmap.pickColor(0)
+                            const arr = this.heatmap.pickColor(initialColor)
                             const vx = arr[0] / 255
                             const vy = arr[1] / 255
                             const vz = arr[2] / 255
@@ -510,7 +562,7 @@
                             this.positions.push(x, y, -hk)
 
                             // colors
-                            const arr = this.heatmap.pickColor(0)
+                            const arr = this.heatmap.pickColor(initialColor)
 
                             const vx = arr[0] / 255
                             const vy = arr[1] / 255
@@ -529,7 +581,7 @@
                             this.positions.push(n, y, z)
 
                             // colors
-                            const arr = this.heatmap.pickColor(0)
+                            const arr = this.heatmap.pickColor(initialColor)
 
                             const vx = arr[0] / 255
                             const vy = arr[1] / 255
@@ -548,7 +600,7 @@
                             this.positions.push(0, y, z)
 
                             // colors
-                            const arr = this.heatmap.pickColor(0)
+                            const arr = this.heatmap.pickColor(initialColor)
 
                             const vx = arr[0] / 255
                             const vy = arr[1] / 255
@@ -566,7 +618,7 @@
                             this.positions.push(j, rOut + m * 2, z)
 
                             // colors
-                            const arr = this.heatmap.pickColor(0)
+                            const arr = this.heatmap.pickColor(initialColor)
 
                             const vx = arr[0] / 255
                             const vy = arr[1] / 255
@@ -591,7 +643,7 @@
                             this.positions.push(x, y, hk)
 
                             // colors
-                            const arr = this.heatmap.pickColor(0)
+                            const arr = this.heatmap.pickColor(initialColor)
                             const vx = arr[0] / 255
                             const vy = arr[1] / 255
                             const vz = arr[2] / 255
@@ -612,7 +664,7 @@
                             this.positions.push(x, y, -hk)
 
                             // colors
-                            const arr = this.heatmap.pickColor(0)
+                            const arr = this.heatmap.pickColor(initialColor)
                             const vx = arr[0] / 255
                             const vy = arr[1] / 255
                             const vz = arr[2] / 255
@@ -632,7 +684,7 @@
                             this.positions.push(x, y, i - hk)
 
                             // colors
-                            const arr = this.heatmap.pickColor(0)
+                            const arr = this.heatmap.pickColor(initialColor)
                             const vx = arr[0] / 255
                             const vy = arr[1] / 255
                             const vz = arr[2] / 255
@@ -652,7 +704,7 @@
                             this.positions.push(x, y, i - hk)
 
                             // colors
-                            const arr = this.heatmap.pickColor(0)
+                            const arr = this.heatmap.pickColor(initialColor)
                             const vx = arr[0] / 255
                             const vy = arr[1] / 255
                             const vz = arr[2] / 255
@@ -671,7 +723,7 @@
                             this.positions.push(x, j, hk)
 
                             // colors
-                            const arr = this.heatmap.pickColor(0)
+                            const arr = this.heatmap.pickColor(initialColor)
                             const vx = arr[0] / 255
                             const vy = arr[1] / 255
                             const vz = arr[2] / 255
@@ -687,7 +739,7 @@
                             this.positions.push(x, j, -hk)
 
                             // colors
-                            const arr = this.heatmap.pickColor(0)
+                            const arr = this.heatmap.pickColor(initialColor)
 
                             const vx = arr[0] / 255
                             const vy = arr[1] / 255
@@ -706,7 +758,7 @@
                             this.positions.push(x, 0, z)
 
                             // colors
-                            const arr = this.heatmap.pickColor(0)
+                            const arr = this.heatmap.pickColor(initialColor)
 
                             const vx = arr[0] / 255
                             const vy = arr[1] / 255
@@ -725,7 +777,7 @@
                             this.positions.push(x, n, z)
 
                             // colors
-                            const arr = this.heatmap.pickColor(0)
+                            const arr = this.heatmap.pickColor(initialColor)
 
                             const vx = arr[0] / 255
                             const vy = arr[1] / 255
@@ -743,7 +795,7 @@
                             this.positions.push(rOut + m * 2, j, z)
 
                             // colors
-                            const arr = this.heatmap.pickColor(0)
+                            const arr = this.heatmap.pickColor(initialColor)
 
                             const vx = arr[0] / 255
                             const vy = arr[1] / 255
@@ -759,7 +811,6 @@
                 geometry.setAttribute('color', new THREE.Float32BufferAttribute(this.colors, 3));
                 geometry.computeBoundingSphere();
                 const material = new THREE.PointsMaterial({size: 3, vertexColors: true});
-                // , opacity: 0.9, transparent: true
                 this.points = new THREE.Points(geometry, material);
                 this.group.add(this.points)
                 console.log(this.colors)
@@ -770,6 +821,9 @@
                     y2: y1 + r * Math.sin(angle * Math.PI / 180)
                 }
             },
+            switchVisibility: function() {
+                this.coolerMaterial.visible = this.visible
+            }
         },
         mounted() {
             this.container = document.getElementById("container")
