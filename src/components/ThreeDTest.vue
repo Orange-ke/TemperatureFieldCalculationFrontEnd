@@ -45,6 +45,8 @@
                 cylinderNum: 14,
                 coolerMaterial: undefined,
                 visible: true,
+
+                fullCount: 0,
             }
         },
         methods: {
@@ -372,7 +374,7 @@
                             const y = xy.y2
                             let z = i - hk
                             positions.push(x, y, z)
-                        } else if (data.end < 4000) {
+                        } else if (data.end <= 4000) {
                             let z = i - hk
                             positions.push(rOut + 2 * (data.end - 3500) / 10, j, z)
                         }
@@ -850,11 +852,17 @@
             this.$root.$on("new_field_data", (data) => {
                 console.log(data)
                 if (data.is_full) {
-                    console.log("full")
-                    this.buildInternalShapesFull(this.rOut, this.rIn, data)
-                } else {
+                    this.fullCount++
+                    if (this.fullCount > 2) {
+                        this.fullCount = 2
+                    }
+                }
+                if (!data.is_full || this.fullCount === 1) {
                     console.log("not full")
                     this.buildInternalShapesNotFull(this.rOut, this.rIn, data)
+                } else {
+                    console.log("full")
+                    this.buildInternalShapesFull(this.rOut, this.rIn, data)
                 }
             })
         }
