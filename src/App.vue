@@ -1,8 +1,8 @@
 <template>
     <div id="app">
         <el-container>
-            <el-header style="padding: 0">
-                <p class="header">计算温度场</p>
+            <el-header style="padding: 0; z-index: 100">
+                <p class="header_p">计算温度场</p>
             </el-header>
             <el-container>
                 <el-aside width="30%">
@@ -13,18 +13,32 @@
                 </el-main>
             </el-container>
         </el-container>
+        <el-dialog title="显示详细切片温度信息图" :visible.sync="centerDialogVisible" width="100%" center top="0vh" :fullscreen=true>
+
+        </el-dialog>
     </div>
 </template>
 
 <script>
     import Form from './components/Form'
     import ThreeDTest from "./components/ThreeDTest";
+
     export default {
         components: {
             ThreeDTest,
             Form,
         },
         name: 'App',
+        data() {
+            return {
+                centerDialogVisible: false,
+            }
+        },
+        mounted() {
+            this.$root.$on("show_detail_slice", (show) => {
+                this.centerDialogVisible = show
+            })
+        }
     }
 </script>
 
@@ -99,19 +113,26 @@
     .el-header {
         box-sizing: border-box;
         border: 1px solid #ddd;
+        box-shadow: rgba(0, 0, 0, 0.35) 0 5px 15px;
+        font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
+        font-size: large;
     }
 
     .el-aside {
         height: 100%;
-        padding: 20px;
+        max-height: 100%;
         border-right: 1px solid #ddd;
+        box-sizing: border-box;
+        max-width: 30%;
+        overflow-x: hidden;
+        position: relative;
     }
 
-    .header {
-        padding: 20px 15px;
+    .header_p {
+        padding-left: 20px;
+        line-height: 60px;
         text-align: left;
-        line-height: 40px;
         font-weight: bolder;
-        font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
+        letter-spacing: 8px;
     }
 </style>

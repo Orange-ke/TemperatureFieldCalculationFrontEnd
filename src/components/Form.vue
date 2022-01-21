@@ -1,76 +1,150 @@
 <template>
-    <el-form :model="form" :rules="rules" label-width="auto" ref="ruleForm">
-        <el-form-item label="选择铸机" prop="machineValue">
-            <el-select v-model="form.machineValue" placeholder="请选择">
-                <el-option
-                        v-for="item in form.machineOptions"
-                        :key="item.value"
-                        :label="item.label"
-                        :value="item.value">
-                </el-option>
-            </el-select>
-        </el-form-item>
-        <el-form-item label="选择钢种" prop="steelValue">
-            <el-select v-model="form.steelValue" placeholder="请选择">
-                <el-option
-                        v-for="item in form.steelOptions"
-                        :key="item.value"
-                        :label="item.label"
-                        :value="item.value">
-                </el-option>
-            </el-select>
-        </el-form-item>
-        <el-form-item label="浇注温度" prop="startTemperature">
-            <el-input-number v-model="form.startTemperature" :precision="2" :step="1" :max="2000"></el-input-number>
-        </el-form-item>
-        <el-form-item label="铜板窄面 进/出水温度">
-            <el-input-number v-model="form.narrowSurface.in" :precision="2" :step="1" :min="0" :max="100"
-                             placeholder="进水温度"></el-input-number>
-            <el-input-number v-model="form.narrowSurface.out" :precision="2" :step="1" :min="0" :max="100"
-                             placeholder="出水温度"></el-input-number>
-        </el-form-item>
-        <el-form-item label="铜板宽面 进/出水温度">
-            <el-input-number v-model="form.wideSurface.in" :precision="2" :step="1" :min="0" :max="100"
-                             placeholder="进水温度"></el-input-number>
-            <el-input-number v-model="form.wideSurface.out" :precision="2" :step="1" :min="0" :max="100"
-                             placeholder="出水温度"></el-input-number>
-        </el-form-item>
-        <el-form-item label="二冷区喷淋水温度" prop="sprayTemperature">
-            <el-input-number v-model="form.sprayTemperature" :precision="2" :step="1" :min="0"
-                             :max="100"></el-input-number>
-        </el-form-item>
-        <el-form-item label="辊子内冷水温度" prop="rollerWaterTemperature">
-            <el-input-number v-model="form.rollerWaterTemperature" :precision="2" :min="0" :step="1"
-                             :max="100"></el-input-number>
-        </el-form-item>
-        <el-form-item label="拉速" prop="dragSpeed">
-            <el-input-number v-model="form.dragSpeed" :precision="2" :step="0.1" :min="0" :max="3.00"></el-input-number>
-        </el-form-item>
-        <el-form-item label="计算方式" prop="calculateMethodValue">
-            <el-select v-model="form.calculateMethodValue" placeholder="请选择">
-                <el-option
-                        v-for="item in form.calculateMethods"
-                        :key="item.value"
-                        :label="item.label"
-                        :value="item.value">
-                </el-option>
-            </el-select>
-        </el-form-item>
-        <el-form-item label="计算水表的拉速范围">
-            <el-input-number v-model="form.speed2Water.top" size="small" :precision="2" :step="form.speed2Water.step"
-                             :min="form.speed2Water.bottom" :max="3.00" placeholder="上限"></el-input-number>
-            <el-input-number v-model="form.speed2Water.bottom" size="small" :precision="2" :step="form.speed2Water.step"
-                             :max="form.speed2Water.top" placeholder="下限"></el-input-number>
-            <el-input-number v-model="form.speed2Water.step" size="small" :precision="2" :step="0.1" :min="0.00"
-                             :max="1.00" placeholder="增量"></el-input-number>
-        </el-form-item>
-        <el-form-item>
-            <el-button type="primary" @click="setCalculateEnv('ruleForm')" :disabled="calculationStarted">设置计算参数
-            </el-button>
-            <el-button type="success" @click="startCalculate" :disabled="!envSet || calculationStarted">开始计算
-            </el-button>
-            <el-button type="danger" @click="stopCalculate" :disabled="!calculationStarted">停止计算</el-button>
-        </el-form-item>
+    <el-form :model="form" :rules="rules" label-width="auto" ref="ruleForm" style="padding: 20px 0;">
+        <div style="height: 100%">
+            <div class="group">
+                <el-form-item label="选择铸机" prop="machineValue">
+                    <el-select size="small" v-model="form.machineValue" placeholder="请选择">
+                        <el-option
+                                v-for="item in form.machineOptions"
+                                :key="item.value"
+                                :label="item.label"
+                                :value="item.value">
+                        </el-option>
+                    </el-select>
+                    <el-button class="item-button" v-show="calculationStarted" :disabled="!calculationStarted"
+                               size="mini" type="primary"
+                               @click="changeMachine">更换铸机
+                    </el-button>
+                </el-form-item>
+            </div>
+
+            <div class="group">
+                <el-form-item label="选择钢种" prop="steelValue">
+                    <el-select size="small" v-model="form.steelValue" placeholder="请选择">
+                        <el-option
+                                v-for="item in form.steelOptions"
+                                :key="item.value"
+                                :label="item.label"
+                                :value="item.value">
+                        </el-option>
+                    </el-select>
+                    <el-button class="item-button" v-show="calculationStarted" :disabled="!calculationStarted"
+                               type="primary" size="mini"
+                               @click="setCalculateEnv('ruleForm')">添加钢种
+                    </el-button>
+                </el-form-item>
+            </div>
+
+            <div class="group">
+                <el-form-item label="浇注温度" prop="startTemperature">
+                    <el-input-number size="small" v-model="form.startTemperature" :precision="2" :step="1"
+                                     :max="1600" :min="200"></el-input-number>
+                    <el-button class="item-button" v-show="calculationStarted" :disabled="!calculationStarted"
+                               size="mini" type="primary"
+                               icon="el-icon-right"></el-button>
+                </el-form-item>
+            </div>
+
+            <div class="group">
+                <el-form-item label="铜板窄面 进/出水温度">
+                    <el-col :span="10">
+                        <el-form-item prop="narrowSurfaceIn">
+                            <el-input-number size="small" v-model="form.narrowSurfaceIn" :precision="2" :step="1"
+                                             :min="0" :max="100"
+                                             placeholder="进水温度"></el-input-number>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="10">
+                        <el-form-item prop="narrowSurfaceOut">
+                            <el-input-number size="small" v-model="form.narrowSurfaceOut" :precision="2" :step="1"
+                                             :min="0" :max="100"
+                                             placeholder="出水温度"></el-input-number>
+                        </el-form-item>
+                    </el-col>
+
+                    <el-button class="item-button" v-show="calculationStarted" :disabled="!calculationStarted"
+                               size="mini" type="primary"
+                               icon="el-icon-right"></el-button>
+                </el-form-item>
+                <el-form-item label="铜板宽面 进/出水温度">
+                    <el-col :span="10">
+                        <el-form-item prop="wideSurfaceIn">
+                            <el-input-number size="small" v-model="form.wideSurfaceIn" :precision="2" :step="1"
+                                             :min="0" :max="100"
+                                             placeholder="进水温度"></el-input-number>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="10">
+                        <el-form-item prop="wideSurfaceOut">
+                            <el-input-number size="small" v-model="form.wideSurfaceOut" :precision="2" :step="1"
+                                             :min="0" :max="100"
+                                             placeholder="出水温度"></el-input-number>
+                        </el-form-item>
+                    </el-col>
+                    <el-button class="item-button" v-show="calculationStarted" :disabled="!calculationStarted"
+                               size="mini" type="primary"
+                               icon="el-icon-right"></el-button>
+                </el-form-item>
+                <el-form-item label="二冷区喷淋水温度" prop="sprayTemperature">
+                    <el-input-number size="small" v-model="form.sprayTemperature" :precision="2" :step="1" :min="0"
+                                     :max="100"></el-input-number>
+                    <el-button class="item-button" v-show="calculationStarted" :disabled="!calculationStarted"
+                               size="mini" type="primary"
+                               icon="el-icon-right"></el-button>
+                </el-form-item>
+                <el-form-item label="辊子内冷水温度" prop="rollerWaterTemperature">
+                    <el-input-number size="small" v-model="form.rollerWaterTemperature" :precision="2" :min="0"
+                                     :step="1"
+                                     :max="100"></el-input-number>
+                    <el-button class="item-button" v-show="calculationStarted" :disabled="!calculationStarted"
+                               size="mini" type="primary"
+                               icon="el-icon-right"></el-button>
+                </el-form-item>
+            </div>
+
+            <div class="group">
+                <el-form-item label="拉速" prop="dragSpeed">
+                    <el-input-number size="small" v-model="form.dragSpeed" :precision="2" :step="0.1" :min="1.5"
+                                     :max="150"></el-input-number>
+                    <el-button class="item-button" v-show="calculationStarted" :disabled="!calculationStarted"
+                               size="mini" type="primary"
+                               icon="el-icon-right"></el-button>
+                </el-form-item>
+            </div>
+
+            <div class="group">
+                <el-form-item label="计算方式" prop="calculateMethodValue">
+                    <el-select size="small" v-model="form.calculateMethodValue" placeholder="请选择">
+                        <el-option
+                                v-for="item in form.calculateMethods"
+                                :key="item.value"
+                                :label="item.label"
+                                :value="item.value">
+                        </el-option>
+                    </el-select>
+                </el-form-item>
+
+                <el-form-item label="计算水表的拉速范围">
+                    <el-input-number v-model="form.speed2Water.top" size="small" :precision="2"
+                                     :step="form.speed2Water.step"
+                                     :min="form.speed2Water.bottom" :max="3.00" placeholder="上限"></el-input-number>
+                    <el-input-number v-model="form.speed2Water.bottom" size="small" :precision="2"
+                                     :step="form.speed2Water.step"
+                                     :max="form.speed2Water.top" placeholder="下限"></el-input-number>
+                    <el-input-number v-model="form.speed2Water.step" size="small" :precision="2" :step="0.1" :min="0.00"
+                                     :max="1.00" placeholder="增量"></el-input-number>
+                </el-form-item>
+            </div>
+
+            <div id="operations">
+                <el-button round="true" size="small" type="primary" :disabled="calculationStarted" @click="setCalculateEnv('ruleForm')">设置计算环境</el-button>
+                <el-button round="true" size="small" type="warning" @click="showDetailSlice" :disabled="!calculationStarted">查看切片温度详情</el-button>
+                <el-button round="true" size="small" type="success" @click="startCalculate" :disabled="!envSet || calculationStarted">开始计算</el-button>
+                <el-button round="true" size="small" type="danger" @click="stopCalculate" :disabled="!calculationStarted">停止计算</el-button>
+                <el-button round="true" size="small" type="warning" @click="startTail" :disabled="!calculationStarted">拉尾坯</el-button>
+            </div>
+
+        </div>
     </el-form>
 </template>
 
@@ -106,14 +180,10 @@
                     }],
                     steelValue: undefined,
                     startTemperature: 1500.00,
-                    narrowSurface: {
-                        in: 20.00,
-                        out: 50.00,
-                    },
-                    wideSurface: {
-                        in: 20.00,
-                        out: 50.00,
-                    },
+                    narrowSurfaceIn: 20.00,
+                    narrowSurfaceOut: 50.00,
+                    wideSurfaceIn: 20.00,
+                    wideSurfaceOut: 50.00,
                     sprayTemperature: 20.00,
                     rollerWaterTemperature: 20.00,
                     dragSpeed: 1.50,
@@ -125,12 +195,9 @@
                         label: '用水量计算'
                     }, {
                         value: '3',
-                        label: '拉尾坯模式'
-                    }, {
-                        value: '4',
                         label: '用电磁制动'
                     }, {
-                        value: '5',
+                        value: '4',
                         label: '用电磁搅拌'
                     }],
                     calculateMethodValue: undefined,
@@ -141,15 +208,31 @@
                     }
                 },
                 rules: {
-                    machineValue: [
-                        {required: true, message: '请选择铸机', trigger: 'change'},
-                    ],
+                    // machineValue: [ // 铸机暂时先不考虑校验，后续铸机可设计为前端页面初始化时配置选择。
+                    //     {required: true, message: '请选择铸机', trigger: 'change'},
+                    // ],
                     steelValue: [
                         {required: true, message: '请选择钢种', trigger: 'change'},
                     ],
                     startTemperature: [
                         {required: true, message: '请输入温度', trigger: 'blur'},
                         {type: 'number', min: 0, max: 2000, message: '温度在 0 到 2000之间', trigger: 'blur'}
+                    ],
+                    narrowSurfaceIn: [
+                        {required: true, message: '请输入温度', trigger: 'blur'},
+                        {type: 'number', min: 0, max: 100, message: '温度在 0 到 100之间', trigger: 'blur'}
+                    ],
+                    narrowSurfaceOut: [
+                        {required: true, message: '请输入温度', trigger: 'blur'},
+                        {type: 'number', min: 0, max: 100, message: '温度在 0 到 100之间', trigger: 'blur'}
+                    ],
+                    wideSurfaceIn: [
+                        {required: true, message: '请输入温度', trigger: 'blur'},
+                        {type: 'number', min: 0, max: 100, message: '温度在 0 到 100之间', trigger: 'blur'}
+                    ],
+                    wideSurfaceOut: [
+                        {required: true, message: '请输入温度', trigger: 'blur'},
+                        {type: 'number', min: 0, max: 100, message: '温度在 0 到 100之间', trigger: 'blur'}
                     ],
                     sprayTemperature: [
                         {required: true, message: '请输入温度', trigger: 'blur'},
@@ -160,8 +243,8 @@
                         {type: 'number', min: 0, max: 100, message: '温度在 0 到 100之间', trigger: 'blur'}
                     ],
                     dragSpeed: [
-                        {required: true, message: '请输入温度', trigger: 'blur'},
-                        {type: 'number', min: 0, max: 100, message: '温度在 0 到 100之间', trigger: 'blur'}
+                        {required: true, message: '请输入速度', trigger: 'blur'},
+                        {type: 'number', min: 1.5, max: 150, message: '速度在 1.5 到 150之间', trigger: 'blur'}
                     ],
                     calculateMethodValue: [
                         {required: true, message: '请选择计算方式', trigger: 'change'},
@@ -170,16 +253,20 @@
             }
         },
         methods: {
-            setCalculateEnv(formName) {
+            changeMachine: function () {
+                console.log(this.form.machineValue)
+            },
+            setCalculateEnv: function (formName) {
                 console.log(this.form)
                 this.$refs[formName].validate((valid) => {
                     if (valid) {
                         let env = {
-                            machineValue: this.form.machineValue,
                             steelValue: this.form.steelValue,
                             startTemperature: this.form.startTemperature,
-                            narrowSurface: this.form.narrowSurface,
-                            wideSurface: this.form.wideSurface,
+                            narrowSurfaceIn: this.form.narrowSurfaceIn,
+                            narrowSurfaceOUt: this.form.narrowSurfaceOut,
+                            wideSurfaceIn: this.form.wideSurfaceIn,
+                            wideSurfaceOut: this.form.wideSurfaceOut,
                             sprayTemperature: this.form.sprayTemperature,
                             rollerWaterTemperature: this.form.rollerWaterTemperature,
                             dragSpeed: this.form.dragSpeed,
@@ -211,6 +298,16 @@
                 }
                 this.connection.send(JSON.stringify(message));
             },
+            startTail: function () {
+                let message = {
+                    type: "tail",
+                    content: "start to tail"
+                }
+                this.connection.send(JSON.stringify(message));
+            },
+            showDetailSlice: function () {
+                this.$root.$emit("show_detail_slice", true)
+            }
         },
         created: function () {
             let self = this
@@ -221,7 +318,7 @@
                 let data = JSON.parse(event.data)
                 console.log(data)
                 switch (data.type) {
-                    case "envSet": {
+                    case "env_set": {
                         self.envSet = true
                         break
                     }
@@ -243,6 +340,10 @@
                         console.log(data.content)
                         break
                     }
+                    case "tail_start": {
+                        console.log(data.content)
+                        break
+                    }
                 }
             }
 
@@ -255,5 +356,37 @@
 </script>
 
 <style scoped>
+    .el-form {
+        height: calc(100vh - 160px);
+        max-height: calc(100vh - 160px);
+        overflow-y: auto;
+        box-sizing: border-box;
+    }
 
+    .group {
+        padding-top: 15px;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .item-button {
+        margin-left: 15px;
+    }
+
+    #operations {
+        position: absolute;
+        bottom: 0;
+        height: 100px;
+        width: 100%;
+        box-shadow: rgba(0, 0, 0, 0.51) 0 5px 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 100;
+        background: white;
+    }
+
+    .el-form-item {
+        padding: 0 15px;
+        text-align: left;
+    }
 </style>
