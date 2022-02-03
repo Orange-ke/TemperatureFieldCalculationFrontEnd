@@ -137,11 +137,11 @@
             </div>
 
             <div id="operations">
-                <el-button round="true" size="small" type="primary" :disabled="calculationStarted" @click="setCalculateEnv('ruleForm')">设置计算环境</el-button>
-                <el-button round="true" size="small" type="warning" @click="showDetailSlice" :disabled="!calculationStarted">查看切片温度详情</el-button>
-                <el-button round="true" size="small" type="success" @click="startCalculate" :disabled="!envSet || calculationStarted">开始计算</el-button>
-                <el-button round="true" size="small" type="danger" @click="stopCalculate" :disabled="!calculationStarted">停止计算</el-button>
-                <el-button round="true" size="small" type="warning" @click="startTail" :disabled="!calculationStarted">拉尾坯</el-button>
+                <el-button :round="true" size="small" type="primary" :disabled="calculationStarted" @click="setCalculateEnv('ruleForm')">设置计算环境</el-button>
+                <el-button :round="true" size="small" type="warning" @click="showDetailSlice" :disabled="!calculationStarted">查看切片温度详情</el-button>
+                <el-button :round="true" size="small" type="success" @click="startCalculate" :disabled="!envSet || calculationStarted">开始计算</el-button>
+                <el-button :round="true" size="small" type="danger" @click="stopCalculate" :disabled="!calculationStarted">停止计算</el-button>
+                <el-button :round="true" size="small" type="warning" @click="startTail" :disabled="!calculationStarted">拉尾坯</el-button>
             </div>
 
         </div>
@@ -158,24 +158,24 @@
                 calculationStarted: false,
                 form: {
                     machineOptions: [{
-                        value: '1',
+                        value: 1,
                         label: '铸机1'
                     }, {
-                        value: '2',
+                        value: 2,
                         label: '铸机2'
                     }, {
-                        value: '3',
+                        value: 3,
                         label: '铸机3'
                     }],
                     machineValue: undefined,
                     steelOptions: [{
-                        value: '1',
+                        value: 1,
                         label: '钢种1'
                     }, {
-                        value: '2',
+                        value: 2,
                         label: '钢种2'
                     }, {
-                        value: '3',
+                        value: 3,
                         label: '钢种3'
                     }],
                     steelValue: undefined,
@@ -188,16 +188,16 @@
                     rollerWaterTemperature: 20.00,
                     dragSpeed: 1.50,
                     calculateMethods: [{
-                        value: '1',
+                        value: 1,
                         label: '用温度计算'
                     }, {
-                        value: '2',
+                        value: 2,
                         label: '用水量计算'
                     }, {
-                        value: '3',
+                        value: 3,
                         label: '用电磁制动'
                     }, {
-                        value: '4',
+                        value: 4,
                         label: '用电磁搅拌'
                     }],
                     calculateMethodValue: undefined,
@@ -261,17 +261,17 @@
                 this.$refs[formName].validate((valid) => {
                     if (valid) {
                         let env = {
-                            steelValue: this.form.steelValue,
-                            startTemperature: this.form.startTemperature,
-                            narrowSurfaceIn: this.form.narrowSurfaceIn,
-                            narrowSurfaceOUt: this.form.narrowSurfaceOut,
-                            wideSurfaceIn: this.form.wideSurfaceIn,
-                            wideSurfaceOut: this.form.wideSurfaceOut,
-                            sprayTemperature: this.form.sprayTemperature,
-                            rollerWaterTemperature: this.form.rollerWaterTemperature,
-                            dragSpeed: this.form.dragSpeed,
-                            calculateMethodValue: this.form.calculateMethodValue,
-                            speed2Water: this.form.speed2Water,
+                            steel_value: this.form.steelValue,
+                            start_temperature: this.form.startTemperature,
+                            narrow_surface_in: this.form.narrowSurfaceIn,
+                            narrow_surface_out: this.form.narrowSurfaceOut,
+                            wide_surface_in: this.form.wideSurfaceIn,
+                            wide_surface_out: this.form.wideSurfaceOut,
+                            spray_temperature: this.form.sprayTemperature,
+                            roller_water_temperature: this.form.rollerWaterTemperature,
+                            drag_speed: this.form.dragSpeed,
+                            calculate_method_value: this.form.calculateMethodValue,
+                            speed_2_water: this.form.speed2Water,
                         }
                         let message = {
                             type: "env",
