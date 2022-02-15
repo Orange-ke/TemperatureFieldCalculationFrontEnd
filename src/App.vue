@@ -9,34 +9,61 @@
                     <Form></Form>
                 </el-aside>
                 <el-main>
-                    <ThreeDTest></ThreeDTest>
+                    <ThreeDField></ThreeDField>
                 </el-main>
             </el-container>
         </el-container>
-        <el-dialog title="显示详细切片温度信息图" :visible.sync="centerDialogVisible" width="100%" center top="0vh" :fullscreen=true>
-
+        <el-dialog :visible.sync="centerDialogVisible" width="100%" center top="0vh" :fullscreen=true>
+            <span id="dialog_title">温度场切片详情</span>
+            <i id="dialog_close" class="el-icon-circle-close" @click="closeDialog"></i>
+            <SliceShow :conn="conn"></SliceShow>
         </el-dialog>
     </div>
 </template>
 
 <script>
     import Form from './components/Form'
-    import ThreeDTest from "./components/ThreeDField";
+    import ThreeDField from "./components/ThreeDField";
+    import SliceShow from "./components/SliceShow";
 
     export default {
         components: {
-            ThreeDTest,
+            ThreeDField,
             Form,
+            SliceShow,
         },
         name: 'App',
         data() {
             return {
                 centerDialogVisible: false,
+                conn: undefined,
+            }
+        },
+        methods: {
+            closeDialog: function () {
+                this.$confirm("确认关闭？").then(() => {
+                    if (this.conn !== undefined) {
+                        this.stopSliceDetail()
+                    }
+                    this.centerDialogVisible = false
+                }).catch(() => {})
+            },
+            stopSliceDetail: function () {
+                let message = {
+                    type: "stop_push_slice_detail",
+                    content: "stop_push_slice_detail",
+                }
+                if (this.conn !== undefined) {
+                    this.conn.send(JSON.stringify(message));
+                }
             }
         },
         mounted() {
-            this.$root.$on("show_detail_slice", (show) => {
-                this.centerDialogVisible = show
+            this.$root.$on("show_detail_slice", (args) => {
+                this.centerDialogVisible = args.show
+                this.conn = args.conn
+
+                this.$root.$emit("open_dialog")
             })
         }
     }
@@ -134,5 +161,44 @@
         text-align: left;
         font-weight: bolder;
         letter-spacing: 8px;
+    }
+
+    .el-dialog__header {
+        display: none;
+    }
+
+    .el-dialog__body {
+        position: relative;
+    }
+
+    #dialog_title {
+        display: block;
+        position: absolute;
+        color: white;
+        font-size: medium;
+        top: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 999;
+    }
+
+    #dialog_close {
+        display: block;
+        height: 100px;
+        width: 100px;
+        text-align: center;
+        line-height: 100px;
+        font-size: 50px;
+        color: white;
+        position: absolute;
+        z-index: 999;
+        top: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        cursor: pointer;
+    }
+
+    #dialog_close:hover {
+        color: #dddddd;
     }
 </style>

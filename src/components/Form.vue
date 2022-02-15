@@ -346,7 +346,7 @@
                             type: "env",
                             content: JSON.stringify(env)
                         }
-                        this.connection.send(JSON.stringify(message));
+                        this.connection.send(JSON.stringify(message))
                     } else {
                         console.log('error submit!!');
                         return false;
@@ -375,7 +375,7 @@
                 this.connection.send(JSON.stringify(message));
             },
             showDetailSlice: function () {
-                this.$root.$emit("show_detail_slice", true)
+                this.$root.$emit("show_detail_slice", {show: true, conn: this.connection})
             }
         },
         created: function () {
@@ -434,6 +434,20 @@
                         break
                     }
                     case "tail_start": {
+                        console.log(data.content)
+                        break
+                    }
+                    case "slice_detail": {
+                        console.log(data.content)
+                        let content = JSON.parse(data.content)
+                        self.$root.$emit("new_slice_detail", content)
+                        break
+                    }
+                    case "start_push_slice_detail_success": {
+                        console.log(data.content)
+                        break
+                    }
+                    case "stop_push_slice_detail_success": {
                         console.log(data.content)
                         break
                     }

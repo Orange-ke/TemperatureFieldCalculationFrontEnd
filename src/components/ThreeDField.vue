@@ -15,7 +15,7 @@
     import OrbitControls from 'three-orbitcontrols'
 
     export default {
-        name: "ThreeDTest",
+        name: "ThreeDField",
         data() {
             return {
                 scene: undefined,
@@ -51,7 +51,7 @@
                 xLength: 270,
                 yLength: 42,
 
-                cylinderNum: 14, // 棍子的个数
+                cylinderNum: 14, // 辊子的个数
                 coolerMaterial: undefined,
                 visible: true,
 
