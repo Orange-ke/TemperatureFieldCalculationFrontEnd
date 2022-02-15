@@ -30,7 +30,7 @@
                     </el-select>
                     <el-button class="item-button" v-show="calculationStarted" :disabled="!calculationStarted"
                                type="primary" size="mini"
-                               @click="setCalculateEnv('ruleForm')">添加钢种
+                               @click="addSteelType">添加钢种
                     </el-button>
                 </el-form-item>
             </div>
@@ -41,7 +41,8 @@
                                      :max="1600" :min="200"></el-input-number>
                     <el-button class="item-button" v-show="calculationStarted" :disabled="!calculationStarted"
                                size="mini" type="primary"
-                               icon="el-icon-right"></el-button>
+                               icon="el-icon-right"
+                               @click="changeInitialTemp"></el-button>
                 </el-form-item>
             </div>
 
@@ -64,7 +65,8 @@
 
                     <el-button class="item-button" v-show="calculationStarted" :disabled="!calculationStarted"
                                size="mini" type="primary"
-                               icon="el-icon-right"></el-button>
+                               icon="el-icon-right"
+                               @click="changeNarrowSurface"></el-button>
                 </el-form-item>
                 <el-form-item label="铜板宽面 进/出水温度">
                     <el-col :span="10">
@@ -83,14 +85,16 @@
                     </el-col>
                     <el-button class="item-button" v-show="calculationStarted" :disabled="!calculationStarted"
                                size="mini" type="primary"
-                               icon="el-icon-right"></el-button>
+                               icon="el-icon-right"
+                               @click="changeWideSurface"></el-button>
                 </el-form-item>
                 <el-form-item label="二冷区喷淋水温度" prop="sprayTemperature">
                     <el-input-number size="small" v-model="form.sprayTemperature" :precision="2" :step="1" :min="0"
                                      :max="100"></el-input-number>
                     <el-button class="item-button" v-show="calculationStarted" :disabled="!calculationStarted"
                                size="mini" type="primary"
-                               icon="el-icon-right"></el-button>
+                               icon="el-icon-right"
+                               @click="changeSprayTemp"></el-button>
                 </el-form-item>
                 <el-form-item label="辊子内冷水温度" prop="rollerWaterTemperature">
                     <el-input-number size="small" v-model="form.rollerWaterTemperature" :precision="2" :min="0"
@@ -98,7 +102,8 @@
                                      :max="100"></el-input-number>
                     <el-button class="item-button" v-show="calculationStarted" :disabled="!calculationStarted"
                                size="mini" type="primary"
-                               icon="el-icon-right"></el-button>
+                               icon="el-icon-right"
+                               @click="changeRollerWaterTemp"></el-button>
                 </el-form-item>
             </div>
 
@@ -108,7 +113,8 @@
                                      :max="150"></el-input-number>
                     <el-button class="item-button" v-show="calculationStarted" :disabled="!calculationStarted"
                                size="mini" type="primary"
-                               icon="el-icon-right"></el-button>
+                               icon="el-icon-right"
+                               @click="changeV"></el-button>
                 </el-form-item>
             </div>
 
@@ -137,11 +143,21 @@
             </div>
 
             <div id="operations">
-                <el-button :round="true" size="small" type="primary" :disabled="calculationStarted" @click="setCalculateEnv('ruleForm')">设置计算环境</el-button>
-                <el-button :round="true" size="small" type="warning" @click="showDetailSlice" :disabled="!calculationStarted">查看切片温度详情</el-button>
-                <el-button :round="true" size="small" type="success" @click="startCalculate" :disabled="!envSet || calculationStarted">开始计算</el-button>
-                <el-button :round="true" size="small" type="danger" @click="stopCalculate" :disabled="!calculationStarted">停止计算</el-button>
-                <el-button :round="true" size="small" type="warning" @click="startTail" :disabled="!calculationStarted">拉尾坯</el-button>
+                <el-button :round="true" size="small" type="primary" :disabled="calculationStarted"
+                           @click="setCalculateEnv('ruleForm')">设置计算环境
+                </el-button>
+                <el-button :round="true" size="small" type="warning" @click="showDetailSlice"
+                           :disabled="!calculationStarted">查看切片温度详情
+                </el-button>
+                <el-button :round="true" size="small" type="success" @click="startCalculate"
+                           :disabled="!envSet || calculationStarted">开始计算
+                </el-button>
+                <el-button :round="true" size="small" type="danger" @click="stopCalculate"
+                           :disabled="!calculationStarted">停止计算
+                </el-button>
+                <el-button :round="true" size="small" type="warning" @click="startTail" :disabled="!calculationStarted">
+                    拉尾坯
+                </el-button>
             </div>
 
         </div>
@@ -256,6 +272,59 @@
             changeMachine: function () {
                 console.log(this.form.machineValue)
             },
+            addSteelType: function () {
+                console.log(this.form.steelValue)
+            },
+            changeInitialTemp: function () {
+                let message = {
+                    type: "change_initial_temp",
+                    content: String(this.form.startTemperature),
+                }
+                this.connection.send(JSON.stringify(message));
+            },
+            changeNarrowSurface: function () {
+                let narrowSurface = {
+                    in: this.form.narrowSurfaceIn,
+                    out: this.form.narrowSurfaceOut,
+                }
+                let message = {
+                    type: "change_narrow_surface",
+                    content: JSON.stringify(narrowSurface)
+                }
+                this.connection.send(JSON.stringify(message));
+            },
+            changeWideSurface: function () {
+                let wideSurface = {
+                    in: this.form.wideSurfaceIn,
+                    out: this.form.wideSurfaceOut,
+                }
+                let message = {
+                    type: "change_wide_surface",
+                    content: JSON.stringify(wideSurface)
+                }
+                this.connection.send(JSON.stringify(message));
+            },
+            changeSprayTemp: function () {
+                let message = {
+                    type: "change_spray_temp",
+                    content: String(this.form.sprayTemperature),
+                }
+                this.connection.send(JSON.stringify(message));
+            },
+            changeRollerWaterTemp: function () {
+                let message = {
+                    type: "change_roller_water_temp",
+                    content: String(this.form.rollerWaterTemperature),
+                }
+                this.connection.send(JSON.stringify(message));
+            },
+            changeV: function () {
+                let message = {
+                    type: "change_v",
+                    content: String(this.form.dragSpeed),
+                }
+                this.connection.send(JSON.stringify(message));
+            },
             setCalculateEnv: function (formName) {
                 console.log(this.form)
                 this.$refs[formName].validate((valid) => {
@@ -320,6 +389,30 @@
                 switch (data.type) {
                     case "env_set": {
                         self.envSet = true
+                        break
+                    }
+                    case "initial_temp_set": {
+                        console.log(data.content)
+                        break
+                    }
+                    case "narrow_surface_temp_set": {
+                        console.log(data.content)
+                        break
+                    }
+                    case "wide_surface_temp_set": {
+                        console.log(data.content)
+                        break
+                    }
+                    case "spray_water_temp_set": {
+                        console.log(data.content)
+                        break
+                    }
+                    case "roller_water_temp_set": {
+                        console.log(data.content)
+                        break
+                    }
+                    case "v_set": {
+                        console.log(data.content)
                         break
                     }
                     case "started": {

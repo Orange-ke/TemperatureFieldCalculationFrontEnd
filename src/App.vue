@@ -21,7 +21,7 @@
 
 <script>
     import Form from './components/Form'
-    import ThreeDTest from "./components/ThreeDTest";
+    import ThreeDTest from "./components/ThreeDField";
 
     export default {
         components: {
