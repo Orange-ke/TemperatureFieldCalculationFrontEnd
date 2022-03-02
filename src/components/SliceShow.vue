@@ -1,8 +1,26 @@
 <template>
     <div id="slice_container">
+        <div class="currentIndex">
+            <span>目前显示第 {{sliceIndex}} 个切片</span>
+        </div>
         <div class="bottom">
-            <el-input-number v-model="sliceIndex" :step="1" :max="4000" :min="1"></el-input-number>
-            <el-button style="margin-left: 10px;" round type="primary" @click="showSliceDetail">查看切片</el-button>
+            <div class="slider_container">
+                <div class="block">
+                    <span class="demonstration">切片生成进度</span>
+                    <el-slider
+                            :disabled="true"
+                            :max="max"
+                            :marks="marks"
+                            v-model="sliceLength"
+                            :step="1">
+                    </el-slider>
+                </div>
+                <div :style="styleStart" class="mark">{{start === 1 ? "" : start}}</div>
+                <div :style="styleEnd" class="mark">{{end === 4000 ? "" : end}}</div>
+            </div>
+
+            <el-input-number v-model="sliceIndex" :step="1" :max="sliceLength" :min="1"></el-input-number>
+            <el-button style="margin-left: 10px;" round type="primary" @click="showSliceDetail(sliceIndex - 1)">查看切片</el-button>
         </div>
     </div>
 </template>
@@ -13,9 +31,15 @@
 
     export default {
         name: "SliceShow",
-        props: ['conn'],
+        props: ['conn', 'start', 'end'],
         data() {
             return {
+                sliceLength: 100,
+                marks: {},
+                max: 0,
+                styleStart: "",
+                styleEnd: "",
+
                 sliceIndex: 1,
 
                 width: 0,
@@ -100,7 +124,7 @@
                 if (n === 0) {
                     return
                 }
-                console.log(m, n)
+                // console.log(m, n)
                 if (data[0][0] === -1) { // 为空
                     return
                 }
@@ -210,11 +234,11 @@
             render: function () {
                 this.renderer.render(this.scene, this.camera)
             },
-            showSliceDetail: function () {
+            showSliceDetail: function (index) {
                 console.log(this.sliceIndex)
                 let message = {
                     type: "start_push_slice_detail",
-                    content: String(this.sliceIndex - 1)
+                    content: String(index)
                 }
                 if (this.conn !== undefined) {
                     this.conn.send(JSON.stringify(message));
@@ -223,6 +247,10 @@
             }
         },
         mounted() {
+            this.styleStart = 'transform: translateX(-50%); left:' + this.start/4000*100 + '%;'
+            this.styleEnd = 'transform: translateX(-50%); left:' + this.end/4000*100 + '%;'
+
+
             this.container = document.getElementById("slice_container")
             this.width = this.container.clientWidth
             this.height = this.container.clientHeight
@@ -235,14 +263,17 @@
 
             let self = this
             this.$root.$on("new_slice_detail", (data) => {
-                self.buildShapes(data, self.sliceWidth, self.sliceHeight)
+                self.buildShapes(data.slice, self.sliceWidth, self.sliceHeight)
+                self.marks = data.marks
+                self.max = data.end
+                self.sliceLength = data.current
             })
 
             this.$root.$on("open_dialog", () => {
-                self.showSliceDetail()
+                self.showSliceDetail(this.start)
             })
 
-            this.showSliceDetail()
+            this.showSliceDetail(this.start)
         }
     }
 </script>
@@ -255,12 +286,43 @@
         position: relative;
     }
 
-    .bottom {
+    .demonstration {
+        display: inline-block;
+        padding-top: 5px;
+    }
+
+    .currentIndex {
         position: absolute;
         text-align: center;
-        z-index: 999;
-        bottom: 20px;
         left: 50%;
         transform: translateX(-50%);
+        z-index: 999;
+        bottom: 120px;
+        color: white;
+        font-size: large;
+        font-weight: bold;
+    }
+
+    .bottom {
+        box-sizing: border-box;
+        position: absolute;
+        text-align: center;
+        width: 100%;
+        z-index: 999;
+        bottom: 0;
+        background: white;
+    }
+
+    .slider_container {
+        position: relative;
+    }
+
+    .mark {
+        display: inline-block;
+        position: absolute;
+        color: #212121;
+        bottom: -35px;
+        z-index: 10000;
+        font-size: smaller;
     }
 </style>

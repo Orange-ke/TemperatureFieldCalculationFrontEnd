@@ -146,14 +146,17 @@
                 <el-button :round="true" size="small" type="primary" :disabled="calculationStarted"
                            @click="setCalculateEnv('ruleForm')">设置计算环境
                 </el-button>
-                <el-button :round="true" size="small" type="warning" @click="showDetailSlice"
-                           :disabled="!calculationStarted">查看切片温度详情
-                </el-button>
                 <el-button :round="true" size="small" type="success" @click="startCalculate"
                            :disabled="!envSet || calculationStarted">开始计算
                 </el-button>
                 <el-button :round="true" size="small" type="danger" @click="stopCalculate"
                            :disabled="!calculationStarted">停止计算
+                </el-button>
+                <el-button :round="true" size="small" type="warning" @click="showDetailSlice(1, 4000)"
+                           :disabled="!calculationStarted">查看切片温度详情
+                </el-button>
+                <el-button :round="true" size="small" type="warning" @click="showDetailCurves"
+                           :disabled="!calculationStarted">查看纵切面温度分布
                 </el-button>
                 <el-button :round="true" size="small" type="warning" @click="startTail" :disabled="!calculationStarted">
                     拉尾坯
@@ -366,6 +369,7 @@
                     content: "stop to calculate"
                 }
                 this.connection.send(JSON.stringify(message));
+                console.log("stop to calculate")
             },
             startTail: function () {
                 let message = {
@@ -374,8 +378,11 @@
                 }
                 this.connection.send(JSON.stringify(message));
             },
-            showDetailSlice: function () {
-                this.$root.$emit("show_detail_slice", {show: true, conn: this.connection})
+            showDetailSlice: function (start, end) {
+                this.$root.$emit("show_detail_slice", {show: true, start: start, end: end, conn: this.connection})
+            },
+            showDetailCurves: function() {
+                this.$root.$emit("show_detail_curves", {show: true, conn: this.connection})
             }
         },
         created: function () {
@@ -385,7 +392,7 @@
 
             self.connection.onmessage = function (event) {
                 let data = JSON.parse(event.data)
-                console.log(data)
+                // console.log(data)
                 switch (data.type) {
                     case "env_set": {
                         self.envSet = true
@@ -421,7 +428,7 @@
                     }
                     case "data_push": {
                         let content = JSON.parse(data.content)
-                        console.log(data)
+                        // console.log(data)
                         self.$root.$emit("new_field_data", content)
                         break
                     }
@@ -438,7 +445,7 @@
                         break
                     }
                     case "slice_detail": {
-                        console.log(data.content)
+                        // console.log(data.content)
                         let content = JSON.parse(data.content)
                         self.$root.$emit("new_slice_detail", content)
                         break
@@ -488,6 +495,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        flex-wrap: wrap;
         z-index: 100;
         background: white;
     }

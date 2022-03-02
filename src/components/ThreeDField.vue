@@ -881,7 +881,7 @@
             this.init()
             this.animate()
             this.$root.$on("new_field_data", (data) => {
-                console.log(data)
+                // console.log(data)
                 if (data.is_full) {
                     this.fullCount++
                     if (this.fullCount > 2) {
@@ -889,10 +889,10 @@
                     }
                 }
                 if (!data.is_full || this.fullCount === 1) { // 第一次切片充满时需要添加新增加切片的位置数据
-                    console.log("not full")
+                    // console.log("not full")
                     this.buildInternalShapesNotFull(this.rOut, this.rIn, data)
                 } else {
-                    console.log("full")
+                    // console.log("full")
                     this.buildInternalShapesFull(this.rOut, this.rIn, data)
                 }
             })

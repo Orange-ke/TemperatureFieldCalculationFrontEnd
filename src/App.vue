@@ -13,10 +13,16 @@
                 </el-main>
             </el-container>
         </el-container>
-        <el-dialog :visible.sync="centerDialogVisible" width="100%" center top="0vh" :fullscreen=true>
-            <span id="dialog_title">温度场切片详情</span>
-            <i id="dialog_close" class="el-icon-circle-close" @click="closeDialog"></i>
-            <SliceShow :conn="conn"></SliceShow>
+        <el-dialog :visible.sync="sliceDialogVisible" width="100%" center top="0vh" :fullscreen=true>
+            <span class="dialog_title">温度场切片详情</span>
+            <i class="dialog_close el-icon-circle-close" @click="closeSliceDialog"></i>
+            <SliceShow :conn="conn" :start="start" :end="end"></SliceShow>
+        </el-dialog>
+
+        <el-dialog :visible.sync="curvesDialogVisible" width="100%" center top="0vh" :fullscreen=true>
+            <span class="dialog_title">温度场纵切面温度分布详情</span>
+            <i class="dialog_close el-icon-circle-close" @click="closeCurvesDialog"></i>
+            <Curves :conn="conn"></Curves>
         </el-dialog>
     </div>
 </template>
@@ -25,9 +31,11 @@
     import Form from './components/Form'
     import ThreeDField from "./components/ThreeDField";
     import SliceShow from "./components/SliceShow";
+    import Curves from "./components/Curves";
 
     export default {
         components: {
+            Curves,
             ThreeDField,
             Form,
             SliceShow,
@@ -35,17 +43,29 @@
         name: 'App',
         data() {
             return {
-                centerDialogVisible: false,
+                sliceDialogVisible: false,
+                curvesDialogVisible: false,
+
                 conn: undefined,
+                start: 0,
+                end: 0,
             }
         },
         methods: {
-            closeDialog: function () {
+            closeSliceDialog: function () {
                 this.$confirm("确认关闭？").then(() => {
                     if (this.conn !== undefined) {
                         this.stopSliceDetail()
                     }
-                    this.centerDialogVisible = false
+                    this.sliceDialogVisible = false
+                }).catch(() => {})
+            },
+            closeCurvesDialog: function () {
+                this.$confirm("确认关闭？").then(() => {
+                    if (this.conn !== undefined) {
+                        // todo
+                    }
+                    this.curvesDialogVisible = false
                 }).catch(() => {})
             },
             stopSliceDetail: function () {
@@ -55,15 +75,23 @@
                 }
                 if (this.conn !== undefined) {
                     this.conn.send(JSON.stringify(message));
+                    console.log("stop_push_slice_detail")
                 }
             }
         },
         mounted() {
             this.$root.$on("show_detail_slice", (args) => {
-                this.centerDialogVisible = args.show
+                this.sliceDialogVisible = args.show
                 this.conn = args.conn
+                this.start = args.start
+                this.end = args.end
 
                 this.$root.$emit("open_dialog")
+            })
+
+            this.$root.$on("show_detail_curves", (args) => {
+                this.curvesDialogVisible = args.show
+                this.conn = args.conn
             })
         }
     }
@@ -80,11 +108,7 @@
         height: 100vh;
         box-sizing: border-box;
     }
-
-    /**
-   * Eric Meyer's Reset CSS v2.0 (http://meyerweb.com/eric/tools/css/reset/)
-   * http://cssreset.com
-   */
+    /* css reset */
     html, body, div, span, applet, object, iframe,
     h1, h2, h3, h4, h5, h6, p, blockquote, pre,
     a, abbr, acronym, address, big, cite, code,
@@ -171,18 +195,20 @@
         position: relative;
     }
 
-    #dialog_title {
+    .dialog_title {
         display: block;
         position: absolute;
         color: white;
-        font-size: medium;
+        font-size: large;
         top: 30px;
         left: 50%;
         transform: translateX(-50%);
         z-index: 999;
+        font-weight: bolder;
+
     }
 
-    #dialog_close {
+    .dialog_close {
         display: block;
         height: 100px;
         width: 100px;
@@ -198,7 +224,7 @@
         cursor: pointer;
     }
 
-    #dialog_close:hover {
+    .dialog_close:hover {
         color: #dddddd;
     }
 </style>
