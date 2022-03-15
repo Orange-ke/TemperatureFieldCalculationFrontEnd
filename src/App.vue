@@ -13,13 +13,13 @@
                 </el-main>
             </el-container>
         </el-container>
-        <el-dialog :visible.sync="sliceDialogVisible" width="100%" center top="0vh" :fullscreen=true>
+        <el-dialog :destroy-on-close="true" :visible.sync="sliceDialogVisible" width="100%" center top="0vh" :fullscreen=true>
             <span class="dialog_title">温度场切片详情</span>
             <i class="dialog_close el-icon-circle-close" @click="closeSliceDialog"></i>
             <SliceShow :conn="conn" :start="start" :end="end"></SliceShow>
         </el-dialog>
 
-        <el-dialog :visible.sync="curvesDialogVisible" width="100%" center top="0vh" :fullscreen=true>
+        <el-dialog :destroy-on-close="true" :visible.sync="curvesDialogVisible" width="100%" center top="0vh" :fullscreen=true>
             <span class="dialog_title">温度场纵切面温度分布详情</span>
             <i class="dialog_close el-icon-circle-close" @click="closeCurvesDialog"></i>
             <Curves :conn="conn"></Curves>
@@ -54,9 +54,9 @@
         methods: {
             closeSliceDialog: function () {
                 this.$confirm("确认关闭？").then(() => {
-                    if (this.conn !== undefined) {
-                        this.stopSliceDetail()
-                    }
+                    // if (this.conn !== undefined) {
+                    //     this.stopSliceDetail()
+                    // }
                     this.sliceDialogVisible = false
                 }).catch(() => {})
             },
@@ -198,7 +198,7 @@
     .dialog_title {
         display: block;
         position: absolute;
-        color: white;
+        color: #212121;
         font-size: large;
         top: 30px;
         left: 50%;
@@ -215,7 +215,7 @@
         text-align: center;
         line-height: 100px;
         font-size: 50px;
-        color: white;
+        color: #212121;
         position: absolute;
         z-index: 999;
         top: 30px;
@@ -224,7 +224,11 @@
         cursor: pointer;
     }
 
+    .el-dialog--center .el-dialog__body {
+        padding: 10px 25px;
+    }
+
     .dialog_close:hover {
-        color: #dddddd;
+        color: #919191;
     }
 </style>

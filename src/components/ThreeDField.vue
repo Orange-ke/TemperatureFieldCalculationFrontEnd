@@ -13,6 +13,9 @@
 <script>
     import * as THREE from 'three'
     import OrbitControls from 'three-orbitcontrols'
+    import {FontLoader} from 'three/examples/jsm/loaders/FontLoader';
+    import {TextGeometry} from 'three/examples/jsm/geometries/TextGeometry'
+    import fontJson from '../assets/fonts/helvetiker_bold.typeface.json'
 
     export default {
         name: "ThreeDField",
@@ -51,13 +54,24 @@
                 xLength: 270,
                 yLength: 42,
 
-                cylinderNum: 14, // 辊子的个数
+                cylinderNum: 118, // 辊子的个数
                 coolerMaterial: undefined,
+                rollerMaterials: undefined,
                 visible: true,
 
                 originTemperature: 1601,
 
                 fullCount: 0, // 记录切片充满的次数，第一次特殊处理
+
+                fontHeight: 2,
+                fontSize: 12,
+                curveSegments: 10,
+                bevelThickness: 0.1,
+                bevelSize: 0.3,
+                bevelSegments: 3,
+                bevelEnabled: true,
+                font: undefined,
+                textMat: undefined
             }
         },
         methods: {
@@ -69,7 +83,7 @@
 
                 this.scene.add(new THREE.AmbientLight(0xffffff))
 
-                this.scene.background = new THREE.Color(0x050505)
+                this.scene.background = new THREE.Color(0xffffff)
 
                 this.group = new THREE.Group()
                 this.group.position.set(-200, -250, 0)
@@ -145,7 +159,7 @@
             },
             createPaletteHelper: function (colorStops, texts, left, top, right) {
                 //颜色条的大小
-                let width = 100, height = 810
+                let width = 100, height = 820
 
                 // 创建canvas
                 let paletteCanvas = document.createElement("canvas")
@@ -177,7 +191,7 @@
                 return {colorData: ctx.getImageData(0, 0, width, height).data, canvas: paletteCanvas}
             },
             buildShapes: function () {
-                let parameters = {color: 0x00BCD4, opacity: 0.2, transparent: true}
+                let parameters = {color: 0x000000, opacity: 0.5, transparent: true}
                 // outline
                 this.buildOutlineShapeUp(this.rOut, parameters)
                 this.buildOutlineCurve(this.rOut, this.rIn, parameters)
@@ -312,48 +326,136 @@
             buildCooler: function (rOut, rIn) {
                 const group = new THREE.Group()
                 this.coolerMaterial = new THREE.MeshBasicMaterial({color: 0x00BCD4, opacity: 0.3, transparent: true});
-                const geometry = new THREE.BoxGeometry(this.yLength, this.upLength, this.xLength);
+                const geometry1 = new THREE.BoxGeometry(this.yLength / 2, this.upLength, this.xLength);
 
-                const cube1 = new THREE.Mesh(geometry, this.coolerMaterial);
-                cube1.position.set(-25, rOut + this.upLength / 2, 0)
+                const cube1 = new THREE.Mesh(geometry1, this.coolerMaterial);
+                cube1.position.set(-15, rOut + this.upLength / 2, 0)
                 group.add(cube1)
 
-                const cube2 = new THREE.Mesh(geometry, this.coolerMaterial);
-                cube2.position.set(this.yLength + 26, rOut + this.upLength / 2, 0)
+                const cube2 = new THREE.Mesh(geometry1, this.coolerMaterial);
+                cube2.position.set(this.yLength + 15, rOut + this.upLength / 2, 0)
                 group.add(cube2)
 
-                let angle = 90
+                const geometry2 = new THREE.BoxGeometry(this.yLength * 2 + 10, this.upLength, this.yLength / 2);
+                const cube3 = new THREE.Mesh(geometry2, this.coolerMaterial);
+                cube3.position.set(this.yLength / 2, rOut + this.upLength / 2, this.xLength / 2 + 10)
+                group.add(cube3)
+
+                const cube4 = new THREE.Mesh(geometry2, this.coolerMaterial);
+                cube4.position.set(this.yLength / 2, rOut + this.upLength / 2, -this.xLength / 2 - 10)
+                group.add(cube4)
+
                 let step = 90 / this.arcLength
 
-                const geometryCylinder = new THREE.CylinderGeometry(10, 10, this.xLength, this.xLength);
-                for (let i = 1; i < this.arcLength; i += this.arcLength / this.cylinderNum) {
-                    let xy1 = this.calculateXY(rOut, rOut, rOut + 14, (angle - i * step) - 180)
-                    const cylinder1 = new THREE.Mesh(geometryCylinder, this.coolerMaterial);
+                let index = 0
+                const colors = [0x00BCD4, 0x263238, 0x00BCD4, 0x263238, 0x00BCD4, 0x263238, 0x00BCD4, 0x263238, 0x00BCD4, 0x263238, 0x00BCD4, 0x263238, 0x00BCD4, 0x263238, 0x00BCD4]
+                this.rollerMaterials = [
+                    new THREE.MeshBasicMaterial({color: colors[0], opacity: 0.5, transparent: true}),
+                    new THREE.MeshBasicMaterial({color: colors[1], opacity: 0.5, transparent: true}),
+                    new THREE.MeshBasicMaterial({color: colors[2], opacity: 0.5, transparent: true}),
+                    new THREE.MeshBasicMaterial({color: colors[3], opacity: 0.5, transparent: true}),
+                    new THREE.MeshBasicMaterial({color: colors[4], opacity: 0.5, transparent: true}),
+                    new THREE.MeshBasicMaterial({color: colors[5], opacity: 0.5, transparent: true}),
+                    new THREE.MeshBasicMaterial({color: colors[6], opacity: 0.5, transparent: true}),
+                    new THREE.MeshBasicMaterial({color: colors[7], opacity: 0.5, transparent: true}),
+                    new THREE.MeshBasicMaterial({color: colors[8], opacity: 0.5, transparent: true}),
+                    new THREE.MeshBasicMaterial({color: colors[9], opacity: 0.5, transparent: true}),
+                    new THREE.MeshBasicMaterial({color: colors[10], opacity: 0.5, transparent: true}),
+                    new THREE.MeshBasicMaterial({color: colors[11], opacity: 0.5, transparent: true}),
+                    new THREE.MeshBasicMaterial({color: colors[12], opacity: 0.5, transparent: true}),
+                    new THREE.MeshBasicMaterial({color: colors[13], opacity: 0.5, transparent: true}),
+                    new THREE.MeshBasicMaterial({color: colors[14], opacity: 0.5, transparent: true}),
+                ]
+
+                let dict = {
+                    20: true,
+                    27: true,
+                    34: true,
+                    41: true,
+                    48: true,
+                    55: true,
+                    62: true,
+                    69: true,
+                    76: true,
+                    83: true,
+                    90: true,
+                    97: true,
+                    104: true,
+                    111: true,
+                    118: true,
+                }
+
+                const geometryCylinder = new THREE.CylinderGeometry(2, 2, this.xLength, this.xLength);
+                for (let i = 0; i < this.cylinderNum - 21; i += 1) {
+                    let xy1 = this.calculateXY(rOut, rOut, rOut + 14, (i * (this.arcLength / (this.cylinderNum - 21)) * step) - 180)
+                    const cylinder1 = new THREE.Mesh(geometryCylinder, this.rollerMaterials[index]);
                     cylinder1.rotateX(90 * Math.PI / 180)
                     cylinder1.position.set(xy1.x2, xy1.y2, 0)
                     group.add(cylinder1)
 
-                    let xy2 = this.calculateXY(rOut, rOut, rIn - 14, (angle - i * step) - 180)
-                    const cylinder2 = new THREE.Mesh(geometryCylinder, this.coolerMaterial);
+                    let xy2 = this.calculateXY(rOut, rOut, rIn - 14, (i * (this.arcLength / (this.cylinderNum - 21)) * step) - 180)
+                    const cylinder2 = new THREE.Mesh(geometryCylinder, this.rollerMaterials[index]);
                     cylinder2.rotateX(90 * Math.PI / 180)
                     cylinder2.position.set(xy2.x2, xy2.y2, 0)
                     group.add(cylinder2)
+                    if (dict[i]) {
+                        index++
+                    }
                 }
 
-                for (let i = this.downLength / 2; i <= this.downLength; i += this.downLength / 2) {
-                    const cylinder1 = new THREE.Mesh(geometryCylinder, this.coolerMaterial);
+                for (let i = 0; i < 21; i += 1) {
+                    const cylinder1 = new THREE.Mesh(geometryCylinder, this.rollerMaterials[index]);
                     cylinder1.rotateX(90 * Math.PI / 180)
-                    cylinder1.position.set(rOut + i, -14, 0)
+                    cylinder1.position.set(rOut + i * (this.downLength / 21 + 0.5), -14, 0)
                     group.add(cylinder1)
 
-                    const cylinder2 = new THREE.Mesh(geometryCylinder, this.coolerMaterial);
+                    const cylinder2 = new THREE.Mesh(geometryCylinder, this.rollerMaterials[index]);
                     cylinder2.rotateX(90 * Math.PI / 180)
-                    cylinder2.position.set(rOut + i, this.yLength + 14, 0)
+                    cylinder2.position.set(rOut + i * (this.downLength / 21 + 0.5), this.yLength + 14, 0)
                     group.add(cylinder2)
+                    if (dict[i - 1 + this.cylinderNum - 21]) {
+                        index++
+                    }
                 }
-
                 // material.visible = false
                 this.group.add(group)
+                this.loadFont(rOut, rIn)
+            },
+            loadFont: function (rOut, rIn) {
+                this.textMat = new THREE.MeshLambertMaterial({color: 0x212121})
+                let loader = new FontLoader()
+                this.font = loader.parse(fontJson);
+                let step = 90 / this.arcLength
+                let xy = this.calculateXY(rOut, rOut, rIn - 14, (11 * (this.arcLength / (this.cylinderNum - 21)) * step) - 180)
+                this.createText("Seg_0", xy.x2, xy.y2, this.xLength / 2, (11 * (this.arcLength / (this.cylinderNum - 21)) * step) * Math.PI / 180);
+                for (let i = 0; i < 11; i++) {
+                    let xy = this.calculateXY(rOut, rOut, rIn - 14, ((21 + 3.5 + i * 7) * (this.arcLength / (this.cylinderNum - 21)) * step) - 180)
+                    this.createText("Seg_" + (i+1), xy.x2, xy.y2, this.xLength / 2, ((21 + 3.5 + i * 7) * (this.arcLength / (this.cylinderNum - 21)) * step) * Math.PI / 180);
+                }
+                for (let i = 12; i <= 14; i++) {
+                    this.createText("Seg_" + i, rOut + (i - 11) * (this.downLength / 3), this.yLength + 14, this.xLength / 2, 90*Math.PI/180);
+                }
+                this.createText("crystallizer", this.yLength, rOut + this.upLength / 2, this.xLength / 2, 0);
+            },
+            createText: function (txt, x, y, z, angle) {
+                let textGeo = new TextGeometry(txt, {
+                    font: this.font,
+                    size: this.fontSize,
+                    height: this.fontHeight,
+                    curveSegments: this.curveSegments,
+                    weight: "normal",
+                    bevelThickness: this.bevelThickness,
+                    bevelSize: this.bevelSize,
+                    bevelSegments: this.bevelSegments,
+                    bevelEnabled: this.bevelEnabled
+                });
+                textGeo.computeBoundingBox();
+                textGeo.computeVertexNormals();
+                let text = new THREE.Mesh(textGeo, this.textMat)
+                text.position.set(x, y, z)
+                text.rotateZ(angle)
+                text.castShadow = true;
+                this.group.add(text)
             },
             setLine: function (points, parameters) {
                 const material = new THREE.LineBasicMaterial(parameters);
@@ -862,6 +964,10 @@
             },
             switchVisibility: function () {
                 this.coolerMaterial.visible = this.visible
+                for (let i = 0; i < this.rollerMaterials.length; i++) {
+                    this.rollerMaterials[i].visible = this.visible
+                }
+                this.textMat.visible = this.visible
             }
         },
         mounted() {
@@ -895,6 +1001,11 @@
                     // console.log("full")
                     this.buildInternalShapesFull(this.rOut, this.rIn, data)
                 }
+            })
+
+            this.$root.$on("data_generated", (data) => {
+                console.log(data)
+                this.buildInternalShapesNotFull(this.rOut, this.rIn, data)
             })
         }
     }

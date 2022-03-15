@@ -118,6 +118,76 @@
                 </el-form-item>
             </div>
 
+<!--            <div class="group">-->
+<!--                <el-form-item label="结晶器铜板窄面">-->
+<!--                    <el-col :span="24">-->
+<!--                        <el-form-item prop="narrowSurfaceIn" label="铜板窄面进水温度">-->
+<!--                            <el-input-number size="small" v-model="form.narrowSurfaceIn" :precision="2" :step="1"-->
+<!--                                             :min="0" :max="100"-->
+<!--                                             placeholder="进水温度"></el-input-number>-->
+<!--                        </el-form-item>-->
+<!--                    </el-col>-->
+<!--                    <el-col :span="24">-->
+<!--                        <el-form-item prop="narrowSurfaceOut" label="铜板窄面出水温度">-->
+<!--                            <el-input-number size="small" v-model="form.narrowSurfaceOut" :precision="2" :step="1"-->
+<!--                                             :min="0" :max="100"-->
+<!--                                             placeholder="出水温度"></el-input-number>-->
+<!--                        </el-form-item>-->
+<!--                    </el-col>-->
+<!--                    <el-button class="item-button" v-show="calculationStarted" :disabled="!calculationStarted"-->
+<!--                               size="mini" type="primary"-->
+<!--                               icon="el-icon-right"-->
+<!--                               @click="changeNarrowSurface"></el-button>-->
+<!--                </el-form-item>-->
+<!--                <el-form-item label="结晶器铜板宽面">-->
+<!--                    <el-col :span="24">-->
+<!--                        <el-form-item prop="wideSurfaceIn" label="铜板宽面进水温度">-->
+<!--                            <el-input-number size="small" v-model="form.wideSurfaceIn" :precision="2" :step="1"-->
+<!--                                             :min="0" :max="100"-->
+<!--                                             placeholder="进水温度"></el-input-number>-->
+<!--                        </el-form-item>-->
+<!--                    </el-col>-->
+<!--                    <el-col :span="24">-->
+<!--                        <el-form-item prop="wideSurfaceOut" label="铜板宽面出水温度">-->
+<!--                            <el-input-number size="small" v-model="form.wideSurfaceOut" :precision="2" :step="1"-->
+<!--                                             :min="0" :max="100"-->
+<!--                                             placeholder="出水温度"></el-input-number>-->
+<!--                        </el-form-item>-->
+<!--                    </el-col>-->
+<!--                    <el-button class="item-button" v-show="calculationStarted" :disabled="!calculationStarted"-->
+<!--                               size="mini" type="primary"-->
+<!--                               icon="el-icon-right"-->
+<!--                               @click="changeWideSurface"></el-button>-->
+<!--                </el-form-item>-->
+<!--            </div>-->
+
+<!--            <div class="group" v-for="item in machineCfg.secondary_cooling_zone_cfg" :key="item.segment_num">-->
+<!--                <el-form-item :label="item.segment_num">-->
+<!--                    <el-col :span="24">-->
+<!--                        <el-form-item label="喷淋水温度">-->
+<!--                            <el-input-number size="small" v-model="item.sprayTemp" :precision="2" :step="1"-->
+<!--                                             placeholder="进水温度"></el-input-number>-->
+<!--                        </el-form-item>-->
+<!--                    </el-col>-->
+<!--                    <el-col :span="24">-->
+<!--                        <el-form-item label="水量">-->
+<!--                            <el-input-number size="small" v-model="item.waterVolume" :precision="2" :step="1"-->
+<!--                                             placeholder="出水温度"></el-input-number>-->
+<!--                        </el-form-item>-->
+<!--                    </el-col>-->
+<!--                    <el-col :span="24">-->
+<!--                        <el-form-item label="气量">-->
+<!--                            <el-input-number size="small" v-model="item.airVolume" :precision="2" :step="1"-->
+<!--                                             placeholder="出水温度"></el-input-number>-->
+<!--                        </el-form-item>-->
+<!--                    </el-col>-->
+<!--                    <el-button class="item-button" v-show="calculationStarted" :disabled="!calculationStarted"-->
+<!--                               size="mini" type="primary"-->
+<!--                               icon="el-icon-right"-->
+<!--                               @click="change(item)"></el-button>-->
+<!--                </el-form-item>-->
+<!--            </div>-->
+
             <div class="group">
                 <el-form-item label="计算方式" prop="calculateMethodValue">
                     <el-select size="small" v-model="form.calculateMethodValue" placeholder="请选择">
@@ -153,13 +223,16 @@
                            :disabled="!calculationStarted">停止计算
                 </el-button>
                 <el-button :round="true" size="small" type="warning" @click="showDetailSlice(1, 4000)"
-                           :disabled="!calculationStarted">查看切片温度详情
+                           :disabled="calculationStarted">查看切片温度详情
                 </el-button>
                 <el-button :round="true" size="small" type="warning" @click="showDetailCurves"
-                           :disabled="!calculationStarted">查看纵切面温度分布
+                           :disabled="calculationStarted">查看纵切面温度分布
                 </el-button>
                 <el-button :round="true" size="small" type="warning" @click="startTail" :disabled="!calculationStarted">
                     拉尾坯
+                </el-button>
+                <el-button :round="true" size="small" type="warning" @click="generateData" :disabled="calculationStarted">
+                    测试
                 </el-button>
             </div>
 
@@ -175,30 +248,52 @@
                 connection: null,
                 envSet: false,
                 calculationStarted: false,
+                machineCfg: {
+                    crystallizer_cfg: {
+                        "length": 500,
+                    },
+                    secondary_cooling_zone_cfg: [
+                        {segment_num: "Seq_0", sprayTemp: 20, waterVolume: 1000, airVolume: 1000},
+                        {segment_num: "Seq_1", sprayTemp: 20, waterVolume: 1000, airVolume: 1000},
+                        {segment_num: "Seq_2", sprayTemp: 20, waterVolume: 1000, airVolume: 1000},
+                        {segment_num: "Seq_3", sprayTemp: 20, waterVolume: 1000, airVolume: 1000},
+                        {segment_num: "Seq_4", sprayTemp: 20, waterVolume: 1000, airVolume: 1000},
+                        {segment_num: "Seq_5", sprayTemp: 20, waterVolume: 1000, airVolume: 1000},
+                        {segment_num: "Seq_6", sprayTemp: 20, waterVolume: 1000, airVolume: 1000},
+                        {segment_num: "Seq_7", sprayTemp: 20, waterVolume: 1000, airVolume: 1000},
+                        {segment_num: "Seq_8", sprayTemp: 20, waterVolume: 1000, airVolume: 1000},
+                        {segment_num: "Seq_9", sprayTemp: 20, waterVolume: 1000, airVolume: 1000},
+                        {segment_num: "Seq_10", sprayTemp: 20, waterVolume: 1000, airVolume: 1000},
+                        {segment_num: "Seq_11", sprayTemp: 20, waterVolume: 1000, airVolume: 1000},
+                        {segment_num: "Seq_12", sprayTemp: 20, waterVolume: 1000, airVolume: 1000},
+                        {segment_num: "Seq_13", sprayTemp: 20, waterVolume: 1000, airVolume: 1000},
+                        {segment_num: "Seq_14", sprayTemp: 20, waterVolume: 1000, airVolume: 1000},
+                    ]
+                },
                 form: {
                     machineOptions: [{
                         value: 1,
-                        label: '铸机1'
+                        label: '铸机14-20-7'
                     }, {
                         value: 2,
-                        label: '铸机2'
+                        label: '铸机10-10-5'
                     }, {
                         value: 3,
-                        label: '铸机3'
+                        label: '铸机12-15-6'
                     }],
                     machineValue: undefined,
                     steelOptions: [{
                         value: 1,
-                        label: '钢种1'
+                        label: '钢种3310'
                     }, {
                         value: 2,
-                        label: '钢种2'
+                        label: '钢种3140'
                     }, {
                         value: 3,
-                        label: '钢种3'
+                        label: '钢种4017'
                     }],
                     steelValue: undefined,
-                    startTemperature: 1500.00,
+                    startTemperature: 1600.00,
                     narrowSurfaceIn: 20.00,
                     narrowSurfaceOut: 50.00,
                     wideSurfaceIn: 20.00,
@@ -272,6 +367,9 @@
             }
         },
         methods: {
+            change: function (item) {
+                console.log(item)
+            },
             changeMachine: function () {
                 console.log(this.form.machineValue)
             },
@@ -381,8 +479,15 @@
             showDetailSlice: function (start, end) {
                 this.$root.$emit("show_detail_slice", {show: true, start: start, end: end, conn: this.connection})
             },
-            showDetailCurves: function() {
+            showDetailCurves: function () {
                 this.$root.$emit("show_detail_curves", {show: true, conn: this.connection})
+            },
+            generateData: function() {
+                let message = {
+                    type: "generate",
+                    content: "generate_data",
+                }
+                this.connection.send(JSON.stringify(message));
             }
         },
         created: function () {
@@ -456,6 +561,16 @@
                     }
                     case "stop_push_slice_detail_success": {
                         console.log(data.content)
+                        break
+                    }
+                    case "data_generate": {
+                        let content = JSON.parse(data.content)
+                        self.$root.$emit("data_generated", content)
+                        break
+                    }
+                    case "slice_generated": {
+                        let content = JSON.parse(data.content)
+                        self.$root.$emit("slice_generated", content)
                         break
                     }
                 }
