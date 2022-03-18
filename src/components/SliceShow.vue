@@ -55,7 +55,7 @@
 
 <script>
     import * as THREE from "three";
-    import OrbitControls from "three-orbitcontrols";
+    // import OrbitControls from "three-orbitcontrols";
 
     export default {
         name: "SliceShow",
@@ -142,8 +142,8 @@
                 this.buildShapesInit(this.sliceWidth, this.sliceHeight)
                 this.container.appendChild(this.renderer.domElement)
 
-                let controls = new OrbitControls(this.camera, this.renderer.domElement)
-                controls.addEventListener('change', this.render)
+                // let controls = new OrbitControls(this.camera, this.renderer.domElement)
+                // controls.addEventListener('change', this.render)
 
                 this.raycaster = new THREE.Raycaster()
                 this.pointer = new THREE.Vector2()

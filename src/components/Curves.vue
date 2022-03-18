@@ -45,7 +45,6 @@
                 <div class="distance_bottom">
                     <div class="slider_container">
                         <div class="block" style="padding-top: 10px;">
-                            <span class="demonstration">距离结晶器顶端距离</span>
                             <el-slider
                                     @change="showEdgeAtYIndex(yIndex)"
                                     :min="5"
@@ -54,6 +53,7 @@
                                     :marks="marks"
                                     :step="5">
                             </el-slider>
+                            <span class="demonstration">距离结晶器顶端距离(mm)</span>
                         </div>
                     </div>
                 </div>
@@ -76,6 +76,9 @@
         LegendComponent
     } from 'echarts/components'
     import * as THREE from "three";
+    import {FontLoader} from "three/examples/jsm/loaders/FontLoader";
+    import fontJson from "../assets/fonts/helvetiker_bold.typeface.json";
+    import {TextGeometry} from "three/examples/jsm/geometries/TextGeometry";
 
     use([
         CanvasRenderer,
@@ -187,6 +190,30 @@
                     3584.64: "Seq_13",// 104
                     3792.26: "Seq_14",// 111
                 },
+                curvePointsLiquid: undefined,
+                liquidColors: [],
+                liquidPositions: [],
+                curvePointsSolid: undefined,
+                solidColors: [],
+                solidPositions: [],
+                liquidSolidPositions: {
+                    liquid: [],
+                    solid: [],
+                    liquidJoin: {},
+                    solidJoin: {}
+                },
+
+                textMat: undefined,
+                font: undefined,
+                fontHeight: 2,
+                fontSize: 10,
+                curveSegments: 10,
+                bevelThickness: 0.1,
+                bevelSize: 0.3,
+                bevelSegments: 3,
+                bevelEnabled: true,
+
+                line: undefined,
             }
         },
         mounted() {
@@ -199,7 +226,7 @@
 
             console.log(this.width, this.height)
 
-            let r = parseFloat((3000/5 * 4 / (Math.PI * 2)).toFixed(4))
+            let r = parseFloat((3000 / 5 * 4 / (Math.PI * 2)).toFixed(4))
             this.rOut = r + 84 / 2
             this.rIn = r - 84 / 2
 
@@ -216,7 +243,16 @@
 
             this.$root.$on("vertical_slice2_generated", (data) => {
                 console.log(data)
+                this.liquidSolidPositions.liquid = data.liquid
+                this.liquidSolidPositions.solid = data.solid
+                this.liquidSolidPositions.liquidJoin = data.liquid_join
+                this.liquidSolidPositions.solidJoin = data.solid_join
                 this.buildShapes(data.vertical_slice)
+
+                this.buildCurve(this.rOut, this.rIn, this.liquidSolidPositions.liquid, 400, this.curvePointsLiquid.geometry, this.liquidColors, this.liquidPositions)
+                this.buildCurve(this.rOut, this.rIn, this.liquidSolidPositions.solid, 1, this.curvePointsSolid.geometry, this.solidColors, this.solidPositions)
+
+                this.changeText(this.yIndex / 5 - 1)
             })
         },
         methods: {
@@ -227,12 +263,12 @@
                 }
                 this.scene = new THREE.Scene()
                 this.camera = new THREE.PerspectiveCamera(50, this.width / this.height, 1, 10000)
-                this.camera.position.set(0, 150, 800);
+                this.camera.position.set(0, 150, 700);
                 this.scene.add(new THREE.AmbientLight(0xffffff))
                 this.scene.background = new THREE.Color(0xffffff)
 
                 this.group = new THREE.Group()
-                this.group.position.set(-200, -50, 0)
+                this.group.position.set(-200, -100, 0)
                 this.scene.add(this.group)
 
                 this.renderer = new THREE.WebGLRenderer()
@@ -240,9 +276,86 @@
                 this.renderer.setSize(this.width, this.height)
 
                 this.buildShapesInit(this.rOut)
+                this.buildCurveInit()
+                this.loadFont()
                 this.container.appendChild(this.renderer.domElement)
 
                 window.addEventListener('resize', this.onWindowResize, false)
+            },
+            buildLine: function (index) {
+                this.group.remove(this.line)
+                let parameters = {color: 0x212121}
+                let points = []
+                if (index < 100) {
+                    points.push(new THREE.Vector3(42, this.rOut + (100 - index), 0))
+                    points.push(new THREE.Vector3(84 + 5, this.rOut + (100 - index), 0))
+                } else if (index < 700) {
+                    let step = 90 / 600
+                    let xy1 = this.calculateXY(this.rOut, this.rOut, this.rIn + 42, ((index - 100) * step) - 180)
+                    let xy2 = this.calculateXY(this.rOut, this.rOut, this.rIn - 5, ((index - 100) * step) - 180)
+                    points.push(new THREE.Vector3(xy1.x2, xy1.y2, 0))
+                    points.push(new THREE.Vector3(xy2.x2, xy2.y2, 0))
+                } else if (index < 800) {
+                    points.push(new THREE.Vector3(this.rOut + index - 700, 42, 0))
+                    points.push(new THREE.Vector3(this.rOut + index - 700, 84 + 5, 0))
+                }
+                this.line = this.setLine(points, parameters)
+                this.group.add(this.line)
+            },
+            setLine: function (points, parameters) {
+                const material = new THREE.LineBasicMaterial(parameters);
+                const geometry = new THREE.BufferGeometry().setFromPoints(points)
+                return new THREE.Line(geometry, material)
+            },
+            changeText: function (index) {
+                let liquid = this.liquidSolidPositions.liquid
+                let solid = this.liquidSolidPositions.solid
+                if (liquid.length === 0 || solid.length === 0) {
+                    return
+                }
+                this.group.remove(this.text)
+                let liquidValue = liquid[index] * 5
+                let solidValue = solid[index] * 5
+                let text = "L : " + liquidValue + " (mm) , S : " + solidValue + " (mm)"
+                if (index < 100) {
+                    this.text = this.createText(text, 84 + 5, this.rOut + (100 - index), 0, 0)
+                } else if (index < 700) {
+                    let step = 90 / 600
+                    let xy = this.calculateXY(this.rOut, this.rOut, this.rIn - 5, ((index - 100) * step) - 180)
+                    this.text = this.createText(text, xy.x2, xy.y2, 0, (index - 100) * step * Math.PI / 180)
+                } else if (index < 800) {
+                    this.text = this.createText(text, this.rOut + (index - 700), 84 + 5, 0, 90 * Math.PI / 180)
+                }
+                this.group.add(this.text)
+                this.buildLine(index)
+            },
+            loadFont: function () {
+                this.textMat = new THREE.MeshLambertMaterial({color: 0x212121})
+                let loader = new FontLoader()
+                this.font = loader.parse(fontJson)
+                this.text = this.createText("L : 0 (mm) , S : 0 (mm)", 84 + 5, this.rOut + 100, 0, 0)
+                this.group.add(this.text)
+                this.buildLine(0)
+            },
+            createText: function (txt, x, y, z, angle) {
+                let textGeo = new TextGeometry(txt, {
+                    font: this.font,
+                    size: this.fontSize,
+                    height: this.fontHeight,
+                    curveSegments: this.curveSegments,
+                    weight: "normal",
+                    bevelThickness: this.bevelThickness,
+                    bevelSize: this.bevelSize,
+                    bevelSegments: this.bevelSegments,
+                    bevelEnabled: this.bevelEnabled
+                });
+                textGeo.computeBoundingBox();
+                textGeo.computeVertexNormals();
+                let text = new THREE.Mesh(textGeo, this.textMat)
+                text.position.set(x, y, z)
+                text.rotateZ(angle)
+                text.castShadow = true;
+                return text
             },
             buildShapesInit: function (rOut) {
                 let colors = []
@@ -267,7 +380,7 @@
                 }
                 // arc
                 let step = 90 / (3000 / scale)
-                for (let i = 0; i < 3000/scale; i++) {
+                for (let i = 0; i < 3000 / scale; i++) {
                     for (let j = 0; j < 84; j++) {
                         // positions
                         let xy = this.calculateXY(rOut, rOut, rOut - j, (i * step) - 180)
@@ -284,7 +397,7 @@
                     }
                 }
                 // down
-                for (let i = 0; i < 500/scale; i++) {
+                for (let i = 0; i < 500 / scale; i++) {
                     for (let j = 0; j < 84; j++) {
                         // positions
                         const x = rOut + i
@@ -326,10 +439,10 @@
                     }
                 }
                 // arc
-                for (let i = 0; i < 3000/scale; i++) {
+                for (let i = 0; i < 3000 / scale; i++) {
                     for (let j = 0; j < 84; j++) {
                         // colors
-                        const arr = this.heatmap.pickColor(Math.floor(data[i+500/scale][j]) % this.originTemperature)
+                        const arr = this.heatmap.pickColor(Math.floor(data[i + 500 / scale][j]) % this.originTemperature)
                         const vx = arr[0] / 255
                         const vy = arr[1] / 255
                         const vz = arr[2] / 255
@@ -338,10 +451,10 @@
                     }
                 }
                 // down
-                for (let i = 0; i < 500/scale; i++) {
+                for (let i = 0; i < 500 / scale; i++) {
                     for (let j = 0; j < 84; j++) {
                         // colors
-                        const arr = this.heatmap.pickColor(Math.floor(data[i+3500/scale][j]) % this.originTemperature)
+                        const arr = this.heatmap.pickColor(Math.floor(data[i + 3500 / scale][j]) % this.originTemperature)
 
                         const vx = arr[0] / 255
                         const vy = arr[1] / 255
@@ -352,6 +465,106 @@
                 }
                 this.colors = colors
                 this.points.geometry.setAttribute('color', new THREE.Float32BufferAttribute(this.colors, 3));
+            },
+            buildCurveInit: function () {
+                let colors = []
+                let positions = []
+                const geometry1 = new THREE.BufferGeometry();
+                geometry1.setAttribute('position', new THREE.Float32BufferAttribute(colors, 3));
+                geometry1.setAttribute('color', new THREE.Float32BufferAttribute(positions, 3));
+                geometry1.computeBoundingSphere();
+                const material = new THREE.PointsMaterial({size: 3, vertexColors: true});
+                this.curvePointsLiquid = new THREE.Points(geometry1, material);
+                this.group.add(this.curvePointsLiquid)
+
+                const geometry2 = new THREE.BufferGeometry();
+                geometry1.setAttribute('position', new THREE.Float32BufferAttribute(colors, 3));
+                geometry1.setAttribute('color', new THREE.Float32BufferAttribute(positions, 3));
+                geometry1.computeBoundingSphere();
+
+                this.curvePointsSolid = new THREE.Points(geometry2, material);
+                this.group.add(this.curvePointsSolid)
+            },
+            buildCurve: function (rOut, rIn, data, colorIndex, geometry, colors1, positions1) {
+                let positions = []
+                let colors = []
+                let scale = 5
+                // let joined = false
+                // up
+                for (let i = 0; i < 500 / scale; i++) {
+                    // if (data[i] === 42) {
+                    //     joined = true
+                    //     break
+                    // }
+                    if (data[i] === 0) {
+                        continue
+                    }
+                    // positions
+                    const x = data[i]
+                    const y = rOut + 500 / scale - i
+                    positions.push(x, y, 3)
+                    positions.push(84 - x, y, 3)
+                    // colors
+                    const arr = this.heatmap.pickColor(colorIndex)
+
+                    const vx = arr[0] / 255
+                    const vy = arr[1] / 255
+                    const vz = arr[2] / 255
+
+                    colors.push(vx, vy, vz)
+                    colors.push(vx, vy, vz)
+                }
+                // arc
+                let step = 90 / (3000 / scale)
+                for (let i = 0; i < 3000 / scale; i++) {
+                    // if (data[i + 500 / scale] === 42 || joined) {
+                    //     break
+                    // }
+                    if (data[i + 500 / scale] === 0) {
+                        continue
+                    }
+                    // positions
+                    let xy = this.calculateXY(rOut, rOut, rOut - data[i + 500 / scale], (i * step) - 180)
+                    const x = xy.x2
+                    const y = xy.y2
+                    positions.push(x, y, 3)
+                    let xy2 = this.calculateXY(rOut, rOut, rIn + data[i + 500 / scale], (i * step) - 180)
+                    positions.push(xy2.x2, xy2.y2, 3)
+                    // colors
+                    const arr = this.heatmap.pickColor(colorIndex)
+                    const vx = arr[0] / 255
+                    const vy = arr[1] / 255
+                    const vz = arr[2] / 255
+
+                    colors.push(vx, vy, vz)
+                    colors.push(vx, vy, vz)
+                }
+                // down
+                for (let i = 0; i < 500 / scale; i++) {
+                    // if (data[i + 3500 / scale] === 42 || joined) {
+                    //     break
+                    // }
+                    if (data[i + 3500 / scale] === 0) {
+                        continue
+                    }
+                    // positions
+                    const x = rOut + i
+                    positions.push(x, data[i + 3500 / scale], 3)
+                    positions.push(x, 84 - data[i + 3500 / scale], 3)
+                    // colors
+                    const arr = this.heatmap.pickColor(colorIndex)
+
+                    const vx = arr[0] / 255
+                    const vy = arr[1] / 255
+                    const vz = arr[2] / 255
+
+                    colors.push(vx, vy, vz)
+                    colors.push(vx, vy, vz)
+                }
+                colors1 = colors
+                positions1 = positions
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions1, 3));
+                geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors1, 3));
             },
             calculateXY: function (x1, y1, r, angle) {
                 return {
@@ -394,6 +607,7 @@
             },
             showEdgeAtYIndex: function (index) {
                 console.log(index / 5 - 1)
+                this.changeText(index / 5 - 1)
             },
             createPalette: function () {
                 //颜色条的颜色分布
