@@ -573,6 +573,16 @@
                         self.$root.$emit("slice_generated", content)
                         break
                     }
+                    case "vertical_slice1_generated": {
+                        let content = JSON.parse(data.content)
+                        self.$root.$emit("vertical_slice1_generated", content)
+                        break
+                    }
+                    case "vertical_slice2_generated": {
+                        let content = JSON.parse(data.content)
+                        self.$root.$emit("vertical_slice2_generated", content)
+                        break
+                    }
                 }
             }
 
