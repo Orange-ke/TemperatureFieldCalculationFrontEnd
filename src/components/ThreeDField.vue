@@ -435,7 +435,7 @@
                 for (let i = 12; i <= 14; i++) {
                     this.createText("Seg_" + i, rOut + (i - 11) * (this.downLength / 3), this.yLength + 14, this.xLength / 2, 90*Math.PI/180);
                 }
-                this.createText("crystallizer", this.yLength, rOut + this.upLength / 2, this.xLength / 2, 0);
+                this.createText("MD", this.yLength, rOut + this.upLength / 2, this.xLength / 2, 0);
             },
             createText: function (txt, x, y, z, angle) {
                 let textGeo = new TextGeometry(txt, {
