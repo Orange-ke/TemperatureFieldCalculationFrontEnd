@@ -52,6 +52,12 @@
                 yLength: 0,
                 md: 0, // 结晶器长度
                 // todo
+                centerStart: 0,
+                centerEnd: 0,
+                arcStart: 0,
+                arcEnd: 0,
+                totalCenterStart: 0,
+                factor: 0.4, // 用做调整渐近线部分的坐标
                 // z方向的长度
                 originUpLength: 500,
                 originDownLength: 500,
@@ -86,7 +92,11 @@
                 bevelEnabled: true,
                 font: undefined,
                 textMatForCaster: undefined,
-                textMatForCooling: undefined
+                textMatForCooling: undefined,
+
+                // 标记
+                matForCaster: undefined,
+                matForCooling: undefined
             }
         },
         methods: {
@@ -214,7 +224,6 @@
             },
             buildCooler: function (rOut, rIn, coordinate, rollers, coolingZones, segments) {
                 let mdDistanceToCenter = coordinate.center_start_distance / this.zScale + coordinate.level_height / this.zScale - this.md / 2
-
                 const group = new THREE.Group()
                 this.coolerMaterial = new THREE.MeshBasicMaterial({
                     color: 0x0097A7,
@@ -240,17 +249,57 @@
                 cube4.position.set(-rOut + this.yLength / 2, mdDistanceToCenter, -this.xLength / 2 - this.yLength / 4)
                 group.add(cube4)
 
+                let roller = {}
+                let position = 0, xIn = 0, yIn = 0, xOut = 0, yOut = 0, angle = 0
+                let countCenterStart = 0, countCenterEnd = 0 // 用做调整渐近线部分的坐标
                 for (let i = 0; i < rollers.length; i += 1) {
-                    let roller = rollers[i]
+                    roller = rollers[i]
+                    position = (roller.distance + coordinate.level_height) / this.zScale
                     let geometryCylinder = new THREE.CylinderGeometry(roller.outer_diameter / this.zScale / 2, roller.outer_diameter / this.zScale / 2, this.xLength, this.xLength)
                     const cylinder1 = new THREE.Mesh(geometryCylinder, this.coolerMaterial)
                     cylinder1.rotateX(90 * Math.PI / 180)
-                    cylinder1.position.set(roller.outer_x / this.zScale, roller.outer_y / this.zScale, 0)
-                    group.add(cylinder1)
-
                     const cylinder2 = new THREE.Mesh(geometryCylinder, this.coolerMaterial);
                     cylinder2.rotateX(90 * Math.PI / 180)
-                    cylinder2.position.set(roller.inner_x / this.zScale, roller.inner_y / this.zScale, 0)
+                    if (position < this.centerStart) {
+                        xOut = -rOut - roller.outer_diameter / this.zScale / 2
+                        yOut = roller.outer_y / this.zScale
+                        xIn = -rIn + roller.inner_diameter / this.zScale / 2
+                        yIn = roller.inner_y / this.zScale
+                    } else if (position >= this.centerStart && position <= this.arcStart) {
+                        countCenterStart++
+                        angle = (roller.angle - this.factor * (this.totalCenterStart - countCenterStart)) * Math.PI / 180
+                        let xy1 = this.calculateXY(0, 0, rOut + roller.outer_diameter / this.zScale / 2, angle)
+                        xOut = xy1.x2
+                        yOut = xy1.y2
+                        let xy2 = this.calculateXY(0, 0, rIn - roller.inner_diameter / this.zScale / 2, angle)
+                        xIn = xy2.x2
+                        yIn = xy2.y2
+                    } else if (position >= this.arcStart && position <= this.arcEnd) {
+                        angle = roller.angle * Math.PI / 180
+                        let xy1 = this.calculateXY(0, 0, rOut + roller.outer_diameter / this.zScale / 2, angle)
+                        xOut = xy1.x2
+                        yOut = xy1.y2
+                        let xy2 = this.calculateXY(0, 0, rIn - roller.inner_diameter / this.zScale / 2, angle)
+                        xIn = xy2.x2
+                        yIn = xy2.y2
+                    } else if (position > this.arcEnd && position <= this.centerEnd) {
+                        angle = (roller.angle + this.factor * countCenterEnd * 1.3) * Math.PI / 180
+                        let xy1 = this.calculateXY(0, 0, rOut + roller.outer_diameter / this.zScale / 2, angle)
+                        xOut = xy1.x2
+                        yOut = xy1.y2
+                        let xy2 = this.calculateXY(0, 0, rIn - roller.inner_diameter / this.zScale / 2, angle)
+                        xIn = xy2.x2
+                        yIn = xy2.y2
+                        countCenterEnd++
+                    } else {
+                        xOut = roller.outer_x / this.zScale
+                        yOut = -rOut - roller.outer_diameter / this.zScale / 2
+                        xIn = roller.inner_x / this.zScale
+                        yIn = -rIn + roller.inner_diameter / this.zScale / 2
+                    }
+                    cylinder1.position.set(xOut, yOut, 0)
+                    cylinder2.position.set(xIn, yIn, 0)
+                    group.add(cylinder1)
                     group.add(cylinder2)
                 }
 
@@ -262,8 +311,8 @@
                 this.casterLoaded = true
             },
             loadFont: function (rIn, coordinate, rollers, coolingZones, segments) {
-                let offset = 50 // 冷却区标记放置位置偏移量
-                let offset1 = 150 // 设备标记放置位置偏移量
+                let offset = 70 // 冷却区标记放置位置偏移量
+                let offset1 = 170 // 设备标记放置位置偏移量
                 let mdDistanceToCenter = (coordinate.center_start_distance + coordinate.level_height) / this.zScale - this.md / 2
 
                 this.textMatForCaster = new THREE.MeshLambertMaterial({color: 0x212121})
@@ -272,10 +321,7 @@
                 this.font = loader.parse(fontJson);
 
                 // 结晶器标记
-                this.createText("MD", -rIn + offset, mdDistanceToCenter, this.xLength / 2, 0, this.textMatForCaster);
-                // 获取近似圆弧的起始位置距离液面的距离
-                let arcStart = (coordinate.center_start_distance + coordinate.level_height) / this.zScale
-                let arcEnd = (coordinate.center_end_distance + coordinate.level_height) / this.zScale
+                this.createText("MD", -rIn + offset, mdDistanceToCenter, 0, 0, this.textMatForCaster);
 
                 let zone = {}
                 let x, y, angle = 0
@@ -285,18 +331,18 @@
                     zone = coolingZones[i]
                     index = ((zone.start + zone.end) >> 1) - 1
                     position = (rollers[index].distance + coordinate.level_height) / this.zScale
-                    if (position <= arcStart) {
-                        x = rollers[index].inner_x / this.zScale + offset
+                    if (position < this.centerStart) {
+                        x = -rIn + offset
                         y = rollers[index].inner_y / this.zScale
                         angle = 0
-                    } else if (position > arcStart && position < arcEnd) {
+                    } else if (position >= this.centerStart && position <= this.centerEnd) {
                         angle = rollers[index].angle * Math.PI / 180
                         let xy = this.calculateXY(0, 0, rIn - offset, angle)
                         x = xy.x2
                         y = xy.y2
                     } else {
                         x = rollers[index].inner_x / this.zScale
-                        y = rollers[index].inner_y / this.zScale + offset
+                        y = -rIn + offset
                         angle = 90 * Math.PI / 180
                     }
                     // todo
@@ -308,22 +354,22 @@
                     segment = segments[i]
                     index = ((segment.start + segment.end) >> 1) - 1
                     position = (rollers[index].distance + coordinate.level_height) / this.zScale
-                    if (position <= arcStart) {
-                        x = rollers[index].inner_x / this.zScale + offset1
+                    if (position < this.centerStart) {
+                        x = -rIn + offset1
                         y = rollers[index].inner_y / this.zScale
                         angle = 0
-                    } else if (position > arcStart && position < arcEnd) {
+                    } else if (position >= this.centerStart && position <= this.centerEnd) {
                         angle = rollers[index].angle * Math.PI / 180
                         let xy = this.calculateXY(0, 0, rIn - offset1, angle)
                         x = xy.x2
                         y = xy.y2
                     } else {
                         x = rollers[index].inner_x / this.zScale
-                        y = rollers[index].inner_y / this.zScale + offset1
+                        y = -rIn + offset1
                         angle = 90 * Math.PI / 180
                     }
                     // todo
-                    this.createText(segment.seg, x, y, this.xLength / 2 - 40, angle, this.textMatForCaster);
+                    this.createText(segment.seg, x, y, 0, angle, this.textMatForCaster);
                 }
             },
             createText: function (txt, x, y, z, angle, material) {
@@ -350,84 +396,92 @@
                 let offset = 50 // 冷却区标记长度
                 let offset1 = 150 // 设备标记长度
                 const group = new THREE.Group()
-                let parametersForCaster = {color: 0x212121}
-                let parametersForCooling = {color: 0x00796B}
-                // 获取近似圆弧的起始位置距离液面的距离
-                let arcStart = (coordinate.center_start_distance + coordinate.level_height) / this.zScale
-                let arcEnd = (coordinate.center_end_distance + coordinate.level_height) / this.zScale
+                this.matForCaster = new THREE.LineBasicMaterial({color: 0x212121})
+                this.matForCooling = new THREE.LineBasicMaterial({color: 0x00796B})
 
                 let zone = {}
+                let zForCaster = 0
+                let zForCooling = this.xLength / 2
                 // 构建冷却区标记
                 for (let i = 0; i < coolingZones.length; i++) {
                     zone = coolingZones[i]
-                    this.buildMarkHelper(zone.start - 1, zone.start - 1, rollers, coordinate, this.rIn, arcStart, arcEnd, offset, parametersForCooling, group, this.xLength / 2)
-                    this.buildMarkHelper(zone.end - 1, zone.end - 1, rollers, coordinate, this.rIn, arcStart, arcEnd, offset, parametersForCooling, group, this.xLength / 2)
-                    this.buildMarkHelper(zone.start - 1, zone.end - 1, rollers, coordinate, this.rIn, arcStart, arcEnd, offset, parametersForCooling, group, this.xLength / 2)
+                    this.buildMarkHelper1(zone.start - 1, rollers, coordinate, this.rIn, offset, this.matForCooling, group, zForCooling)
+                    this.buildMarkHelper1(zone.end - 1, rollers, coordinate, this.rIn, offset, this.matForCooling, group, zForCooling)
+                    this.buildMarkHelper2(zone.start - 1, zone.end - 1, rollers, coordinate, rIn, offset, this.matForCooling, group, zForCooling)
                 }
 
                 // 构建设备标记
                 let segment = {}
                 for (let i = 1; i < segments.length; i++) {
                     segment = segments[i]
-                    this.buildMarkHelper(segment.start - 1, segment.start - 1, rollers, coordinate, this.rIn, arcStart, arcEnd, offset1, parametersForCaster, group, this.xLength / 2 - 40)
-                    this.buildMarkHelper(segment.end - 1, segment.end - 1, rollers, coordinate, this.rIn, arcStart, arcEnd, offset1, parametersForCaster, group, this.xLength / 2 - 40)
-                    this.buildMarkHelper(segment.start - 1, segment.end - 1, rollers, coordinate, this.rIn, arcStart, arcEnd, offset1, parametersForCaster, group, this.xLength / 2 - 40)
+                    this.buildMarkHelper1(segment.start - 1, rollers, coordinate, this.rIn, offset1, this.matForCaster, group, zForCaster)
+                    this.buildMarkHelper1(segment.end - 1, rollers, coordinate, this.rIn, offset1, this.matForCaster, group, zForCaster)
+                    this.buildMarkHelper2(segment.start - 1, segment.end - 1, rollers, coordinate, rIn, offset1, this.matForCaster, group, zForCaster)
                 }
 
                 this.group.add(group)
             },
-            buildMarkHelper: function (start, end, rollers, coordinate, rIn, arcStart, arcEnd, offset, parameter, group, z) {
+            buildMarkHelper2: function (start, end, rollers, coordinate, rIn, offset, material, group, z) {
                 let position, angle = 0
                 let x1, y1, x2, y2
                 let points = []
                 position = (rollers[start].distance + coordinate.level_height) / this.zScale
-                if (position <= arcStart) {
-                    x1 = rollers[start].inner_x / this.zScale
+                if (position <= this.centerStart) {
+                    x1 = -rIn + offset
                     y1 = rollers[start].inner_y / this.zScale
-                    if (start === end) {
-                        x2 = x1 + offset
-                        y2 = y1
-                    } else {
-                        x1 += offset
-                        x2 = rollers[end].inner_x / this.zScale + offset
-                        y2 = rollers[end].inner_y / this.zScale
-                    }
-                } else if (position > arcStart && position < arcEnd) {
-                    if (start === end) {
-                        angle = rollers[start].angle * Math.PI / 180
-                        let xy1 = this.calculateXY(0, 0, rIn, angle)
-                        x1 = xy1.x2
-                        y1 = xy1.y2
-                        let xy2 = this.calculateXY(0, 0, rIn - offset, angle)
-                        x2 = xy2.x2
-                        y2 = xy2.y2
-                    } else {
-                        angle = rollers[start].angle * Math.PI / 180
-                        let xy1 = this.calculateXY(0, 0, rIn - offset, angle)
-                        x1 = xy1.x2
-                        y1 = xy1.y2
-                        angle = rollers[end].angle * Math.PI / 180
-                        let xy2 = this.calculateXY(0, 0, rIn - offset, angle)
-                        x2 = xy2.x2
-                        y2 = xy2.y2
-                    }
+                } else if (position >= this.centerStart && position <= this.centerEnd) {
+                    angle = rollers[start].angle * Math.PI / 180
+                    let xy1 = this.calculateXY(0, 0, rIn - offset, angle)
+                    x1 = xy1.x2
+                    y1 = xy1.y2
                 } else {
                     x1 = rollers[start].inner_x / this.zScale
-                    y1 = rollers[start].inner_y / this.zScale
-                    if (start === end) {
-                        x2 = x1
-                        y2 = y1 + offset
-                    } else {
-                        y1 += offset
-                        x2 = rollers[end].inner_x / this.zScale
-                        y2 = rollers[end].inner_y / this.zScale + offset
-                    }
+                    y1 = -rIn + offset
+                }
+                position = (rollers[end].distance + coordinate.level_height) / this.zScale
+                if (position <= this.centerStart) {
+                    x2 = -rIn + offset
+                    y2 = rollers[end].inner_y / this.zScale
+                } else if (position >= this.centerStart && position <= this.centerEnd) {
+                    angle = rollers[end].angle * Math.PI / 180
+                    let xy1 = this.calculateXY(0, 0, rIn - offset, angle)
+                    x2 = xy1.x2
+                    y2 = xy1.y2
+                } else {
+                    x2 = rollers[end].inner_x / this.zScale
+                    y2 = -rIn + offset
                 }
                 points.push(new THREE.Vector3(x1, y1, z), new THREE.Vector3(x2, y2, z))
-                group.add(this.setLine(points, parameter))
+                group.add(this.setLine(points, material))
             },
-            setLine: function (points, parameters) {
-                const material = new THREE.LineBasicMaterial(parameters);
+            buildMarkHelper1: function (index, rollers, coordinate, rIn, offset, material, group, z) {
+                let position, angle = 0
+                let x1, y1, x2, y2
+                let points = []
+                position = (rollers[index].distance + coordinate.level_height) / this.zScale
+                if (position <= this.centerStart) {
+                    x1 = -rIn
+                    y1 = rollers[index].inner_y / this.zScale
+                    x2 = x1 + offset
+                    y2 = y1
+                } else if (position >= this.centerStart && position <= this.centerEnd) {
+                    angle = rollers[index].angle * Math.PI / 180
+                    let xy1 = this.calculateXY(0, 0, rIn, angle)
+                    x1 = xy1.x2
+                    y1 = xy1.y2
+                    let xy2 = this.calculateXY(0, 0, rIn - offset, angle)
+                    x2 = xy2.x2
+                    y2 = xy2.y2
+                } else {
+                    x1 = rollers[index].inner_x / this.zScale
+                    y1 = -rIn
+                    x2 = x1
+                    y2 = y1 + offset
+                }
+                points.push(new THREE.Vector3(x1, y1, z), new THREE.Vector3(x2, y2, z))
+                group.add(this.setLine(points, material))
+            },
+            setLine: function (points, material) {
                 const geometry = new THREE.BufferGeometry().setFromPoints(points)
                 return new THREE.Line(geometry, material)
             },
@@ -933,15 +987,13 @@
             },
             switchVisibility: function () {
                 this.coolerMaterial.visible = this.visible
-                this.textMat.visible = this.visible
+                this.textMatForCaster.visible = this.visible
+                this.textMatForCooling.visible = this.visible
+                this.matForCaster.visible = this.visible
+                this.matForCooling.visible = this.visible
             }
         },
         mounted() {
-
-            this.upLength = this.originUpLength / this.scaleDown * this.scaleUp
-            this.downLength = this.originDownLength / this.scaleDown * this.scaleUp
-            this.arcLength = this.originArcLength / this.scaleDown * this.scaleUp
-
             this.container = document.getElementById("container")
             this.width = this.container.clientWidth
             this.height = this.container.clientHeight
@@ -962,6 +1014,25 @@
 
                 self.rOut = data.coordinate.r / self.zScale
                 self.rIn = self.rOut - self.yLength
+
+                self.arcLength = (self.rOut - self.yLength / 2) * 2 * Math.PI / 4
+
+                // 获取近似圆弧的起始位置距离液面的距离
+                self.centerStart = (data.coordinate.center_start_distance + data.coordinate.level_height) / this.zScale
+                self.centerEnd = (data.coordinate.center_end_distance + data.coordinate.level_height) / this.zScale
+                self.arcStart = (data.coordinate.arc_start_distance + data.coordinate.level_height) / this.zScale
+                self.arcEnd = (data.coordinate.arc_end_distance + data.coordinate.level_height) / this.zScale
+
+                // 计算在开始进入圆弧的渐近线中辊子的数量
+                let roller = {}
+                let position = 0
+                for (let i = 0; i < data.secondary_cooling_zone.length; i += 1) {
+                    roller = data.secondary_cooling_zone[i]
+                    position = (roller.distance + data.coordinate.level_height) / this.zScale
+                    if (position >= this.centerStart && position <= this.arcStart) {
+                        self.totalCenterStart++
+                    }
+                }
 
                 self.buildShapes(data.coordinate, data.secondary_cooling_zone, data.cooling_zone, data.segments)
             })
