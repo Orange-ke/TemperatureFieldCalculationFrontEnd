@@ -1,6 +1,7 @@
 <template>
     <div id="container">
         <el-switch
+                v-if="casterLoaded"
                 @change="switchVisibility"
                 style="position: absolute; left: 50%; top: 10px; z-index: 999; transform: translateX(-50%)"
                 v-model="visible"
@@ -21,6 +22,8 @@
         name: "ThreeDField",
         data() {
             return {
+                casterLoaded: false,
+
                 scene: undefined,
                 camera: undefined,
                 renderer: undefined,
@@ -38,11 +41,22 @@
 
                 rOut: undefined,
                 rIn: undefined,
+                // 铸机尺寸配置
+                xScale: 5,
+                yScale: 5,
+                zScale: 10,
+                originXLength: 0,
+                originYLength: 0,
+                originMd: 0,
+                xLength: 0,
+                yLength: 0,
+                md: 0, // 结晶器长度
+                // todo
                 // z方向的长度
                 originUpLength: 500,
                 originDownLength: 500,
                 originArcLength: 3000,
-                originLength: 4000,
+                // originLength: 4000,
 
                 scaleUp: 2,
                 scaleDown: 10,
@@ -51,8 +65,8 @@
                 downLength: 100,
                 arcLength: 600,
                 // x, y 方向的长度
-                xLength: 270,
-                yLength: 42,
+                // xLength: 270,
+                // yLength: 42,
 
                 cylinderNum: 118, // 辊子的个数
                 coolerMaterial: undefined,
@@ -62,7 +76,7 @@
                 originTemperature: 1601,
 
                 fullCount: 0, // 记录切片充满的次数，第一次特殊处理
-
+                // 三维字体配置
                 fontHeight: 2,
                 fontSize: 12,
                 curveSegments: 10,
@@ -71,7 +85,8 @@
                 bevelSegments: 3,
                 bevelEnabled: true,
                 font: undefined,
-                textMat: undefined
+                textMatForCaster: undefined,
+                textMatForCooling: undefined
             }
         },
         methods: {
@@ -79,19 +94,19 @@
                 this.scene = new THREE.Scene()
 
                 this.camera = new THREE.PerspectiveCamera(50, this.width / this.height, 1, 10000)
-                this.camera.position.set(0, 150, 800);
+                this.camera.position.set(0, 0, 1550);
 
                 this.scene.add(new THREE.AmbientLight(0xffffff))
 
                 this.scene.background = new THREE.Color(0xffffff)
 
                 this.group = new THREE.Group()
-                this.group.position.set(-200, -250, 0)
+                this.group.position.set(-200, 300, 0)
                 this.scene.add(this.group)
 
                 this.heatmap = this.createPalette()
 
-                this.buildShapes()
+                // this.buildShapes()
 
                 this.renderer = new THREE.WebGLRenderer()
                 this.renderer.setPixelRatio(window.devicePixelRatio)
@@ -181,7 +196,7 @@
                 ctx.fillStyle = linearGradient
                 ctx.fillRect(0, 0, width, height)
 
-                ctx.font = '10px "微软雅黑"'
+                ctx.font = '16px "微软雅黑"'
                 ctx.fillStyle = "white"
                 ctx.textBaseline = "top"
                 for (let text of texts) {
@@ -190,254 +205,128 @@
 
                 return {colorData: ctx.getImageData(0, 0, width, height).data, canvas: paletteCanvas}
             },
-            buildShapes: function () {
-                let parameters = {color: 0x000000, opacity: 0.5, transparent: true}
+            buildShapes: function (coordinate, rollers, coolingZones, segments) {
                 // outline
-                this.buildOutlineShapeUp(this.rOut, parameters)
-                this.buildOutlineCurve(this.rOut, this.rIn, parameters)
-                this.buildOutlineShapeDown(this.rOut, parameters)
-                this.buildCooler(this.rOut, this.rIn)
+                this.buildCooler(this.rOut, this.rIn, coordinate, rollers, coolingZones, segments)
 
                 // internal
                 this.buildInternalShapes()
             },
-            buildOutlineCurve: function (rOut, rIn, parameters) {
-                let angle = 90
-                let step = 90 / this.arcLength
-                let pts1 = []
-                for (let i = 0; i < this.arcLength; i++) {
-                    let xy = this.calculateXY(rOut, rOut, rOut, (angle - i * step) - 180)
-                    pts1.push(new THREE.Vector3(xy.x2, xy.y2, this.xLength / 2))  // this is the key operation
-                }
-                let geometry1 = new THREE.BufferGeometry().setFromPoints(pts1);
-                let arc1 = new THREE.Line(geometry1, new THREE.LineBasicMaterial(parameters));
+            buildCooler: function (rOut, rIn, coordinate, rollers, coolingZones, segments) {
+                let mdDistanceToCenter = coordinate.center_start_distance / this.zScale + coordinate.level_height / this.zScale - this.md / 2
 
-                this.group.add(arc1)
-
-                let pts2 = []
-                for (let i = 0; i < this.arcLength; i++) {
-                    let xy = this.calculateXY(rOut, rOut, rOut, (angle - i * step) - 180)
-                    pts2.push(new THREE.Vector3(xy.x2, xy.y2, -this.xLength / 2))  // this is the key operation
-                }
-                let geometry2 = new THREE.BufferGeometry().setFromPoints(pts2);
-                let arc2 = new THREE.Line(geometry2, new THREE.LineBasicMaterial(parameters));
-
-                this.group.add(arc2)
-
-                let pts3 = []
-                for (let i = 0; i < this.arcLength; i++) {
-                    let xy = this.calculateXY(rOut, rOut, rIn, (angle - i * step) - 180)
-                    pts3.push(new THREE.Vector3(xy.x2, xy.y2, this.xLength / 2))  // this is the key operation
-                }
-                let geometry3 = new THREE.BufferGeometry().setFromPoints(pts3);
-                let arc3 = new THREE.Line(geometry3, new THREE.LineBasicMaterial(parameters));
-
-                this.group.add(arc3)
-
-                let pts4 = []
-                for (let i = 0; i < this.arcLength; i++) {
-                    let xy = this.calculateXY(rOut, rOut, rIn, (angle - i * step) - 180)
-                    pts4.push(new THREE.Vector3(xy.x2, xy.y2, -this.xLength / 2))  // this is the key operation
-                }
-                let geometry4 = new THREE.BufferGeometry().setFromPoints(pts4);
-                let arc4 = new THREE.Line(geometry4, new THREE.LineBasicMaterial(parameters));
-
-                this.group.add(arc4)
-            },
-            buildOutlineShapeUp: function (rOut, parameters) {
-                const shape = new THREE.Shape()
-                    .moveTo(0, rOut + this.upLength)
-                    .lineTo(this.yLength, rOut + this.upLength)
-                    .lineTo(this.yLength, rOut)
-                    .lineTo(0, rOut)
-                    .lineTo(0, rOut + this.upLength);
-
-                const points = shape.getPoints();
-                const geometryPoints = new THREE.BufferGeometry().setFromPoints(points);
-
-                let line1 = new THREE.Line(geometryPoints, new THREE.LineBasicMaterial(parameters));
-                line1.position.set(0, 0, -this.xLength / 2);
-                this.group.add(line1);
-
-                let line2 = new THREE.Line(geometryPoints, new THREE.LineBasicMaterial(parameters));
-                line2.position.set(0, 0, this.xLength / 2);
-                this.group.add(line2);
-
-                let points1 = []
-                points1.push(new THREE.Vector3(0, rOut + this.upLength, this.xLength / 2))
-                points1.push(new THREE.Vector3(0, rOut + this.upLength, -this.xLength / 2))
-                this.group.add(this.setLine(points1, parameters))
-
-                let points2 = []
-                points2.push(new THREE.Vector3(0, rOut, this.xLength / 2))
-                points2.push(new THREE.Vector3(0, rOut, -this.xLength / 2))
-                this.group.add(this.setLine(points2, parameters))
-
-                let points3 = []
-                points3.push(new THREE.Vector3(this.yLength, rOut + this.upLength, this.xLength / 2))
-                points3.push(new THREE.Vector3(this.yLength, rOut + this.upLength, -this.xLength / 2))
-                this.group.add(this.setLine(points3, parameters))
-
-                let points4 = []
-                points4.push(new THREE.Vector3(this.yLength, rOut, this.xLength / 2))
-                points4.push(new THREE.Vector3(this.yLength, rOut, -this.xLength / 2))
-                this.group.add(this.setLine(points4, parameters))
-            },
-            buildOutlineShapeDown: function (rOut, parameters) {
-
-                const shape = new THREE.Shape()
-                    .moveTo(rOut, 0)
-                    .lineTo(rOut + this.downLength, 0)
-                    .lineTo(rOut + this.downLength, this.yLength)
-                    .lineTo(rOut, this.yLength)
-                    .lineTo(rOut, 0);
-
-                const points = shape.getPoints();
-                const geometryPoints = new THREE.BufferGeometry().setFromPoints(points);
-
-                let line1 = new THREE.Line(geometryPoints, new THREE.LineBasicMaterial(parameters));
-                line1.position.set(0, 0, -this.xLength / 2);
-                this.group.add(line1);
-
-                let line2 = new THREE.Line(geometryPoints, new THREE.LineBasicMaterial(parameters));
-                line2.position.set(0, 0, this.xLength / 2);
-                this.group.add(line2);
-
-                let points1 = []
-                points1.push(new THREE.Vector3(rOut + this.downLength, 0, this.xLength / 2))
-                points1.push(new THREE.Vector3(rOut + this.downLength, 0, -this.xLength / 2))
-                this.group.add(this.setLine(points1, parameters))
-
-                let points2 = []
-                points2.push(new THREE.Vector3(rOut, 0, this.xLength / 2))
-                points2.push(new THREE.Vector3(rOut, 0, -this.xLength / 2))
-                this.group.add(this.setLine(points2, parameters))
-
-                let points3 = []
-                points3.push(new THREE.Vector3(rOut + this.downLength, this.yLength, this.xLength / 2))
-                points3.push(new THREE.Vector3(rOut + this.downLength, this.yLength, -this.xLength / 2))
-                this.group.add(this.setLine(points3, parameters))
-
-                let points4 = []
-                points4.push(new THREE.Vector3(rOut, this.yLength, this.xLength / 2))
-                points4.push(new THREE.Vector3(rOut, this.yLength, -this.xLength / 2))
-                this.group.add(this.setLine(points4, parameters))
-            },
-            buildCooler: function (rOut, rIn) {
                 const group = new THREE.Group()
-                this.coolerMaterial = new THREE.MeshBasicMaterial({color: 0x00BCD4, opacity: 0.3, transparent: true});
-                const geometry1 = new THREE.BoxGeometry(this.yLength / 2, this.upLength, this.xLength);
-
+                this.coolerMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x0097A7,
+                    opacity: 0.5,
+                    transparent: true,
+                });
+                // 宽面
+                const geometry1 = new THREE.BoxGeometry(this.yLength / 2, this.md, this.xLength);
                 const cube1 = new THREE.Mesh(geometry1, this.coolerMaterial);
-                cube1.position.set(-15, rOut + this.upLength / 2, 0)
+                cube1.position.set(-rOut - this.yLength / 4, mdDistanceToCenter, 0)
                 group.add(cube1)
 
                 const cube2 = new THREE.Mesh(geometry1, this.coolerMaterial);
-                cube2.position.set(this.yLength + 15, rOut + this.upLength / 2, 0)
+                cube2.position.set(-rIn + this.yLength / 4, mdDistanceToCenter, 0)
                 group.add(cube2)
-
-                const geometry2 = new THREE.BoxGeometry(this.yLength * 2 + 10, this.upLength, this.yLength / 2);
+                // 窄面
+                const geometry2 = new THREE.BoxGeometry(this.yLength, this.md, this.yLength / 2);
                 const cube3 = new THREE.Mesh(geometry2, this.coolerMaterial);
-                cube3.position.set(this.yLength / 2, rOut + this.upLength / 2, this.xLength / 2 + 10)
+                cube3.position.set(-rOut + this.yLength / 2, mdDistanceToCenter, this.xLength / 2 + this.yLength / 4)
                 group.add(cube3)
 
                 const cube4 = new THREE.Mesh(geometry2, this.coolerMaterial);
-                cube4.position.set(this.yLength / 2, rOut + this.upLength / 2, -this.xLength / 2 - 10)
+                cube4.position.set(-rOut + this.yLength / 2, mdDistanceToCenter, -this.xLength / 2 - this.yLength / 4)
                 group.add(cube4)
 
-                let step = 90 / this.arcLength
-
-                let index = 0
-                const colors = [0x00BCD4, 0x263238, 0x00BCD4, 0x263238, 0x00BCD4, 0x263238, 0x00BCD4, 0x263238, 0x00BCD4, 0x263238, 0x00BCD4, 0x263238, 0x00BCD4, 0x263238, 0x00BCD4]
-                this.rollerMaterials = [
-                    new THREE.MeshBasicMaterial({color: colors[0], opacity: 0.5, transparent: true}),
-                    new THREE.MeshBasicMaterial({color: colors[1], opacity: 0.5, transparent: true}),
-                    new THREE.MeshBasicMaterial({color: colors[2], opacity: 0.5, transparent: true}),
-                    new THREE.MeshBasicMaterial({color: colors[3], opacity: 0.5, transparent: true}),
-                    new THREE.MeshBasicMaterial({color: colors[4], opacity: 0.5, transparent: true}),
-                    new THREE.MeshBasicMaterial({color: colors[5], opacity: 0.5, transparent: true}),
-                    new THREE.MeshBasicMaterial({color: colors[6], opacity: 0.5, transparent: true}),
-                    new THREE.MeshBasicMaterial({color: colors[7], opacity: 0.5, transparent: true}),
-                    new THREE.MeshBasicMaterial({color: colors[8], opacity: 0.5, transparent: true}),
-                    new THREE.MeshBasicMaterial({color: colors[9], opacity: 0.5, transparent: true}),
-                    new THREE.MeshBasicMaterial({color: colors[10], opacity: 0.5, transparent: true}),
-                    new THREE.MeshBasicMaterial({color: colors[11], opacity: 0.5, transparent: true}),
-                    new THREE.MeshBasicMaterial({color: colors[12], opacity: 0.5, transparent: true}),
-                    new THREE.MeshBasicMaterial({color: colors[13], opacity: 0.5, transparent: true}),
-                    new THREE.MeshBasicMaterial({color: colors[14], opacity: 0.5, transparent: true}),
-                ]
-
-                let dict = {
-                    20: true,
-                    27: true,
-                    34: true,
-                    41: true,
-                    48: true,
-                    55: true,
-                    62: true,
-                    69: true,
-                    76: true,
-                    83: true,
-                    90: true,
-                    97: true,
-                    104: true,
-                    111: true,
-                    118: true,
-                }
-
-                const geometryCylinder = new THREE.CylinderGeometry(2, 2, this.xLength, this.xLength);
-                for (let i = 0; i < this.cylinderNum - 21; i += 1) {
-                    let xy1 = this.calculateXY(rOut, rOut, rOut + 14, (i * (this.arcLength / (this.cylinderNum - 21)) * step) - 180)
-                    const cylinder1 = new THREE.Mesh(geometryCylinder, this.rollerMaterials[index]);
+                for (let i = 0; i < rollers.length; i += 1) {
+                    let roller = rollers[i]
+                    let geometryCylinder = new THREE.CylinderGeometry(roller.outer_diameter / this.zScale / 2, roller.outer_diameter / this.zScale / 2, this.xLength, this.xLength)
+                    const cylinder1 = new THREE.Mesh(geometryCylinder, this.coolerMaterial)
                     cylinder1.rotateX(90 * Math.PI / 180)
-                    cylinder1.position.set(xy1.x2, xy1.y2, 0)
+                    cylinder1.position.set(roller.outer_x / this.zScale, roller.outer_y / this.zScale, 0)
                     group.add(cylinder1)
 
-                    let xy2 = this.calculateXY(rOut, rOut, rIn - 14, (i * (this.arcLength / (this.cylinderNum - 21)) * step) - 180)
-                    const cylinder2 = new THREE.Mesh(geometryCylinder, this.rollerMaterials[index]);
+                    const cylinder2 = new THREE.Mesh(geometryCylinder, this.coolerMaterial);
                     cylinder2.rotateX(90 * Math.PI / 180)
-                    cylinder2.position.set(xy2.x2, xy2.y2, 0)
+                    cylinder2.position.set(roller.inner_x / this.zScale, roller.inner_y / this.zScale, 0)
                     group.add(cylinder2)
-                    if (dict[i]) {
-                        index++
-                    }
                 }
 
-                for (let i = 0; i < 21; i += 1) {
-                    const cylinder1 = new THREE.Mesh(geometryCylinder, this.rollerMaterials[index]);
-                    cylinder1.rotateX(90 * Math.PI / 180)
-                    cylinder1.position.set(rOut + i * (this.downLength / 21 + 0.5), -14, 0)
-                    group.add(cylinder1)
-
-                    const cylinder2 = new THREE.Mesh(geometryCylinder, this.rollerMaterials[index]);
-                    cylinder2.rotateX(90 * Math.PI / 180)
-                    cylinder2.position.set(rOut + i * (this.downLength / 21 + 0.5), this.yLength + 14, 0)
-                    group.add(cylinder2)
-                    if (dict[i - 1 + this.cylinderNum - 21]) {
-                        index++
-                    }
-                }
-                // material.visible = false
                 this.group.add(group)
-                this.loadFont(rOut, rIn)
+                // 添加冷却区和设备分区标记
+                this.loadFont(rIn, coordinate, rollers, coolingZones, segments)
+                // 添加冷却区和设备分区划分标记
+                this.buildMark(rIn, coordinate, rollers, coolingZones, segments)
+                this.casterLoaded = true
             },
-            loadFont: function (rOut, rIn) {
-                this.textMat = new THREE.MeshLambertMaterial({color: 0x212121})
+            loadFont: function (rIn, coordinate, rollers, coolingZones, segments) {
+                let offset = 50 // 冷却区标记放置位置偏移量
+                let offset1 = 150 // 设备标记放置位置偏移量
+                let mdDistanceToCenter = (coordinate.center_start_distance + coordinate.level_height) / this.zScale - this.md / 2
+
+                this.textMatForCaster = new THREE.MeshLambertMaterial({color: 0x212121})
+                this.textMatForCooling = new THREE.MeshLambertMaterial({color: 0x00796B})
                 let loader = new FontLoader()
                 this.font = loader.parse(fontJson);
-                let step = 90 / this.arcLength
-                let xy = this.calculateXY(rOut, rOut, rIn - 14, (11 * (this.arcLength / (this.cylinderNum - 21)) * step) - 180)
-                this.createText("Seg_0", xy.x2, xy.y2, this.xLength / 2, (11 * (this.arcLength / (this.cylinderNum - 21)) * step) * Math.PI / 180);
-                for (let i = 0; i < 11; i++) {
-                    let xy = this.calculateXY(rOut, rOut, rIn - 14, ((21 + 3.5 + i * 7) * (this.arcLength / (this.cylinderNum - 21)) * step) - 180)
-                    this.createText("Seg_" + (i+1), xy.x2, xy.y2, this.xLength / 2, ((21 + 3.5 + i * 7) * (this.arcLength / (this.cylinderNum - 21)) * step) * Math.PI / 180);
+
+                // 结晶器标记
+                this.createText("MD", -rIn + offset, mdDistanceToCenter, this.xLength / 2, 0, this.textMatForCaster);
+                // 获取近似圆弧的起始位置距离液面的距离
+                let arcStart = (coordinate.center_start_distance + coordinate.level_height) / this.zScale
+                let arcEnd = (coordinate.center_end_distance + coordinate.level_height) / this.zScale
+
+                let zone = {}
+                let x, y, angle = 0
+                let position, index = 0
+                // 构建冷却区标记
+                for (let i = 0; i < coolingZones.length; i++) {
+                    zone = coolingZones[i]
+                    index = ((zone.start + zone.end) >> 1) - 1
+                    position = (rollers[index].distance + coordinate.level_height) / this.zScale
+                    if (position <= arcStart) {
+                        x = rollers[index].inner_x / this.zScale + offset
+                        y = rollers[index].inner_y / this.zScale
+                        angle = 0
+                    } else if (position > arcStart && position < arcEnd) {
+                        angle = rollers[index].angle * Math.PI / 180
+                        let xy = this.calculateXY(0, 0, rIn - offset, angle)
+                        x = xy.x2
+                        y = xy.y2
+                    } else {
+                        x = rollers[index].inner_x / this.zScale
+                        y = rollers[index].inner_y / this.zScale + offset
+                        angle = 90 * Math.PI / 180
+                    }
+                    // todo
+                    this.createText(zone.zone_name, x, y, this.xLength / 2, angle, this.textMatForCooling);
                 }
-                for (let i = 12; i <= 14; i++) {
-                    this.createText("Seg_" + i, rOut + (i - 11) * (this.downLength / 3), this.yLength + 14, this.xLength / 2, 90*Math.PI/180);
+                let segment = {}
+                // 构建设备标记
+                for (let i = 1; i < segments.length; i++) {
+                    segment = segments[i]
+                    index = ((segment.start + segment.end) >> 1) - 1
+                    position = (rollers[index].distance + coordinate.level_height) / this.zScale
+                    if (position <= arcStart) {
+                        x = rollers[index].inner_x / this.zScale + offset1
+                        y = rollers[index].inner_y / this.zScale
+                        angle = 0
+                    } else if (position > arcStart && position < arcEnd) {
+                        angle = rollers[index].angle * Math.PI / 180
+                        let xy = this.calculateXY(0, 0, rIn - offset1, angle)
+                        x = xy.x2
+                        y = xy.y2
+                    } else {
+                        x = rollers[index].inner_x / this.zScale
+                        y = rollers[index].inner_y / this.zScale + offset1
+                        angle = 90 * Math.PI / 180
+                    }
+                    // todo
+                    this.createText(segment.seg, x, y, this.xLength / 2 - 40, angle, this.textMatForCaster);
                 }
-                this.createText("MD", this.yLength, rOut + this.upLength / 2, this.xLength / 2, 0);
             },
-            createText: function (txt, x, y, z, angle) {
+            createText: function (txt, x, y, z, angle, material) {
                 let textGeo = new TextGeometry(txt, {
                     font: this.font,
                     size: this.fontSize,
@@ -451,11 +340,91 @@
                 });
                 textGeo.computeBoundingBox();
                 textGeo.computeVertexNormals();
-                let text = new THREE.Mesh(textGeo, this.textMat)
+                let text = new THREE.Mesh(textGeo, material)
                 text.position.set(x, y, z)
                 text.rotateZ(angle)
                 text.castShadow = true;
                 this.group.add(text)
+            },
+            buildMark: function (rIn, coordinate, rollers, coolingZones, segments) {
+                let offset = 50 // 冷却区标记长度
+                let offset1 = 150 // 设备标记长度
+                const group = new THREE.Group()
+                let parametersForCaster = {color: 0x212121}
+                let parametersForCooling = {color: 0x00796B}
+                // 获取近似圆弧的起始位置距离液面的距离
+                let arcStart = (coordinate.center_start_distance + coordinate.level_height) / this.zScale
+                let arcEnd = (coordinate.center_end_distance + coordinate.level_height) / this.zScale
+
+                let zone = {}
+                // 构建冷却区标记
+                for (let i = 0; i < coolingZones.length; i++) {
+                    zone = coolingZones[i]
+                    this.buildMarkHelper(zone.start - 1, zone.start - 1, rollers, coordinate, this.rIn, arcStart, arcEnd, offset, parametersForCooling, group, this.xLength / 2)
+                    this.buildMarkHelper(zone.end - 1, zone.end - 1, rollers, coordinate, this.rIn, arcStart, arcEnd, offset, parametersForCooling, group, this.xLength / 2)
+                    this.buildMarkHelper(zone.start - 1, zone.end - 1, rollers, coordinate, this.rIn, arcStart, arcEnd, offset, parametersForCooling, group, this.xLength / 2)
+                }
+
+                // 构建设备标记
+                let segment = {}
+                for (let i = 1; i < segments.length; i++) {
+                    segment = segments[i]
+                    this.buildMarkHelper(segment.start - 1, segment.start - 1, rollers, coordinate, this.rIn, arcStart, arcEnd, offset1, parametersForCaster, group, this.xLength / 2 - 40)
+                    this.buildMarkHelper(segment.end - 1, segment.end - 1, rollers, coordinate, this.rIn, arcStart, arcEnd, offset1, parametersForCaster, group, this.xLength / 2 - 40)
+                    this.buildMarkHelper(segment.start - 1, segment.end - 1, rollers, coordinate, this.rIn, arcStart, arcEnd, offset1, parametersForCaster, group, this.xLength / 2 - 40)
+                }
+
+                this.group.add(group)
+            },
+            buildMarkHelper: function (start, end, rollers, coordinate, rIn, arcStart, arcEnd, offset, parameter, group, z) {
+                let position, angle = 0
+                let x1, y1, x2, y2
+                let points = []
+                position = (rollers[start].distance + coordinate.level_height) / this.zScale
+                if (position <= arcStart) {
+                    x1 = rollers[start].inner_x / this.zScale
+                    y1 = rollers[start].inner_y / this.zScale
+                    if (start === end) {
+                        x2 = x1 + offset
+                        y2 = y1
+                    } else {
+                        x1 += offset
+                        x2 = rollers[end].inner_x / this.zScale + offset
+                        y2 = rollers[end].inner_y / this.zScale
+                    }
+                } else if (position > arcStart && position < arcEnd) {
+                    if (start === end) {
+                        angle = rollers[start].angle * Math.PI / 180
+                        let xy1 = this.calculateXY(0, 0, rIn, angle)
+                        x1 = xy1.x2
+                        y1 = xy1.y2
+                        let xy2 = this.calculateXY(0, 0, rIn - offset, angle)
+                        x2 = xy2.x2
+                        y2 = xy2.y2
+                    } else {
+                        angle = rollers[start].angle * Math.PI / 180
+                        let xy1 = this.calculateXY(0, 0, rIn - offset, angle)
+                        x1 = xy1.x2
+                        y1 = xy1.y2
+                        angle = rollers[end].angle * Math.PI / 180
+                        let xy2 = this.calculateXY(0, 0, rIn - offset, angle)
+                        x2 = xy2.x2
+                        y2 = xy2.y2
+                    }
+                } else {
+                    x1 = rollers[start].inner_x / this.zScale
+                    y1 = rollers[start].inner_y / this.zScale
+                    if (start === end) {
+                        x2 = x1
+                        y2 = y1 + offset
+                    } else {
+                        y1 += offset
+                        x2 = rollers[end].inner_x / this.zScale
+                        y2 = rollers[end].inner_y / this.zScale + offset
+                    }
+                }
+                points.push(new THREE.Vector3(x1, y1, z), new THREE.Vector3(x2, y2, z))
+                group.add(this.setLine(points, parameter))
             },
             setLine: function (points, parameters) {
                 const material = new THREE.LineBasicMaterial(parameters);
@@ -958,15 +927,12 @@
             },
             calculateXY: function (x1, y1, r, angle) {
                 return {
-                    x2: x1 + r * Math.cos(angle * Math.PI / 180),
-                    y2: y1 + r * Math.sin(angle * Math.PI / 180)
+                    x2: x1 - r * Math.cos(angle),
+                    y2: y1 - r * Math.sin(angle)
                 }
             },
             switchVisibility: function () {
                 this.coolerMaterial.visible = this.visible
-                for (let i = 0; i < this.rollerMaterials.length; i++) {
-                    this.rollerMaterials[i].visible = this.visible
-                }
                 this.textMat.visible = this.visible
             }
         },
@@ -980,12 +946,26 @@
             this.width = this.container.clientWidth
             this.height = this.container.clientHeight
 
-            let r = parseFloat((this.arcLength * 4 / (Math.PI * 2)).toFixed(4))
-            this.rOut = r + this.yLength / 2
-            this.rIn = r - this.yLength / 2
-
             this.init()
             this.animate()
+
+            let self = this
+            this.$root.$on("caster_info", (data) => {
+                console.log(data)
+                self.originMd = data.md.length
+                self.originXLength = data.cross_profile.length
+                self.originYLength = data.cross_profile.width
+
+                self.md = self.originMd / self.zScale
+                self.xLength = self.originXLength / self.xScale
+                self.yLength = self.originYLength / self.yScale
+
+                self.rOut = data.coordinate.r / self.zScale
+                self.rIn = self.rOut - self.yLength
+
+                self.buildShapes(data.coordinate, data.secondary_cooling_zone, data.cooling_zone, data.segments)
+            })
+
             this.$root.$on("new_field_data", (data) => {
                 // console.log(data)
                 if (data.is_full) {

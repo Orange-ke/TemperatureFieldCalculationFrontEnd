@@ -1,18 +1,24 @@
 <template>
     <div id="app">
         <el-container>
-            <el-header style="padding: 0; z-index: 100">
-                <p class="header_p">计算温度场</p>
+            <el-header style="padding: 0; z-index: 100; text-align: left">
+                <div class="header_p">计算温度场</div>
+                <el-button @click="formVisible = true" type="success" circle>
+                    <i class="el-icon-plus"></i>
+                </el-button>
             </el-header>
             <el-container>
-                <el-aside width="30%">
-                    <Form></Form>
-                </el-aside>
                 <el-main>
                     <ThreeDField></ThreeDField>
                 </el-main>
             </el-container>
         </el-container>
+
+        <el-dialog :visible.sync="formVisible" center top="5vh">
+            <i class="dialog_close el-icon-circle-close" @click="closeFormDialog"></i>
+            <Form></Form>
+        </el-dialog>
+
         <el-dialog :destroy-on-close="true" :visible.sync="sliceDialogVisible" width="100%" center top="0vh" :fullscreen=true>
             <span class="dialog_title">温度场切片详情</span>
             <i class="dialog_close el-icon-circle-close" @click="closeSliceDialog"></i>
@@ -43,6 +49,8 @@
         name: 'App',
         data() {
             return {
+                formVisible: true,
+
                 sliceDialogVisible: false,
                 curvesDialogVisible: false,
 
@@ -52,6 +60,9 @@
             }
         },
         methods: {
+            closeFormDialog: function () {
+                this.formVisible = false
+            },
             closeSliceDialog: function () {
                 this.$confirm("确认关闭？").then(() => {
                     // if (this.conn !== undefined) {
@@ -180,11 +191,13 @@
     }
 
     .header_p {
+        font-size: larger;
         padding-left: 20px;
         line-height: 60px;
         text-align: left;
         font-weight: bolder;
         letter-spacing: 8px;
+        display: inline-block;
     }
 
     .el-dialog__header {

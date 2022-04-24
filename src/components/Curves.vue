@@ -23,6 +23,11 @@
                 </div>
             </el-tab-pane>
             <el-tab-pane label="纵切面温度分布云图">
+                <div class="info">
+                    <div>固相线交汇处：{{solidJoin * 10}} mm</div>
+                    <br>
+                    <div>液相线交汇处：{{liquidJoin * 10}} mm</div>
+                </div>
                 <div id="canvas_container" style="width: 100%; height: 820px;"></div>
                 <div class="slice_bottom">
                     <div class="slider_container">
@@ -203,6 +208,9 @@
                     solidJoin: {}
                 },
 
+                solidJoin: 0,
+                liquidJoin: 0,
+
                 textMat: undefined,
                 font: undefined,
                 fontHeight: 2,
@@ -247,6 +255,10 @@
                 this.liquidSolidPositions.solid = data.solid
                 this.liquidSolidPositions.liquidJoin = data.liquid_join
                 this.liquidSolidPositions.solidJoin = data.solid_join
+
+                this.solidJoin = data.solid_join.join_index
+                this.liquidJoin = data.liquid_join.join_index
+
                 this.buildShapes(data.vertical_slice)
 
                 this.buildCurve(this.rOut, this.rIn, this.liquidSolidPositions.liquid, 400, this.curvePointsLiquid.geometry, this.liquidColors, this.liquidPositions)
@@ -671,7 +683,7 @@
                 ctx.fillStyle = linearGradient
                 ctx.fillRect(0, 0, width, height)
 
-                ctx.font = '10px "微软雅黑"'
+                ctx.font = '16px "微软雅黑"'
                 ctx.fillStyle = "white"
                 ctx.textBaseline = "top"
                 for (let text of texts) {
@@ -753,5 +765,15 @@
     .distance_bottom .block {
         display: block;
         width: 100%;
+    }
+
+    .info {
+        font-size: larger;
+        font-weight: bolder;
+        display: inline-block;
+        position: absolute;
+        z-index: 999;
+        top: 30px;
+        right: 200px;
     }
 </style>

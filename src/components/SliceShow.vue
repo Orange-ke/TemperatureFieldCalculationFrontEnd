@@ -287,7 +287,7 @@
                 ctx.fillStyle = linearGradient
                 ctx.fillRect(0, 0, width, height)
 
-                ctx.font = '10px "微软雅黑"'
+                ctx.font = '16px "微软雅黑"'
                 ctx.fillStyle = "white"
                 ctx.textBaseline = "top"
                 for (let text of texts) {
