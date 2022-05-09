@@ -19,13 +19,15 @@
             <Form></Form>
         </el-dialog>
 
-        <el-dialog :destroy-on-close="true" :visible.sync="sliceDialogVisible" width="100%" center top="0vh" :fullscreen=true>
+        <el-dialog :destroy-on-close="true" :visible.sync="sliceDialogVisible" width="100%" center top="0vh"
+                   :fullscreen=true>
             <span class="dialog_title">温度场切片详情</span>
             <i class="dialog_close el-icon-circle-close" @click="closeSliceDialog"></i>
-            <SliceShow :conn="conn" :start="start" :end="end"></SliceShow>
+            <SliceShow :conn="conn" :config="casterCfg"></SliceShow>
         </el-dialog>
 
-        <el-dialog :destroy-on-close="true" :visible.sync="curvesDialogVisible" width="100%" center top="0vh" :fullscreen=true>
+        <el-dialog :destroy-on-close="true" :visible.sync="curvesDialogVisible" width="100%" center top="0vh"
+                   :fullscreen=true>
             <span class="dialog_title">温度场纵切面温度分布详情</span>
             <i class="dialog_close el-icon-circle-close" @click="closeCurvesDialog"></i>
             <Curves :conn="conn"></Curves>
@@ -55,8 +57,7 @@
                 curvesDialogVisible: false,
 
                 conn: undefined,
-                start: 0,
-                end: 0,
+                casterCfg: {}
             }
         },
         methods: {
@@ -69,7 +70,8 @@
                     //     this.stopSliceDetail()
                     // }
                     this.sliceDialogVisible = false
-                }).catch(() => {})
+                }).catch(() => {
+                })
             },
             closeCurvesDialog: function () {
                 this.$confirm("确认关闭？").then(() => {
@@ -77,7 +79,8 @@
                         // todo
                     }
                     this.curvesDialogVisible = false
-                }).catch(() => {})
+                }).catch(() => {
+                })
             },
             stopSliceDetail: function () {
                 let message = {
@@ -94,8 +97,7 @@
             this.$root.$on("show_detail_slice", (args) => {
                 this.sliceDialogVisible = args.show
                 this.conn = args.conn
-                this.start = args.start
-                this.end = args.end
+                this.casterCfg = args.config
 
                 this.$root.$emit("open_dialog")
             })
@@ -119,6 +121,7 @@
         height: 100vh;
         box-sizing: border-box;
     }
+
     /* css reset */
     html, body, div, span, applet, object, iframe,
     h1, h2, h3, h4, h5, h6, p, blockquote, pre,

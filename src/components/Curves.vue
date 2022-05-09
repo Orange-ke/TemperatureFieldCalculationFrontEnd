@@ -328,7 +328,7 @@
                 this.group.remove(this.text)
                 let liquidValue = liquid[index] * 5
                 let solidValue = solid[index] * 5
-                let text = "L : " + liquidValue + " (mm) , S : " + solidValue + " (mm)"
+                let text = "液相线距离坯壳厚度 : " + liquidValue + " (mm) , 固相线相线距离坯壳厚度 : " + solidValue + " (mm)"
                 if (index < 100) {
                     this.text = this.createText(text, 84 + 5, this.rOut + (100 - index), 0, 0)
                 } else if (index < 700) {

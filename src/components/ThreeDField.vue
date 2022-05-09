@@ -42,37 +42,20 @@
                 rOut: undefined,
                 rIn: undefined,
                 // 铸机尺寸配置
+                zScale: 10,
                 xScale: 5,
                 yScale: 5,
-                zScale: 10,
                 originXLength: 0,
                 originYLength: 0,
                 originMd: 0,
                 xLength: 0,
                 yLength: 0,
                 md: 0, // 结晶器长度
-                // todo
+                levelHeight: 0,
                 centerStart: 0,
                 centerEnd: 0,
                 arcStart: 0,
                 arcEnd: 0,
-                totalCenterStart: 0,
-                factor: 0.4, // 用做调整渐近线部分的坐标
-                // z方向的长度
-                originUpLength: 500,
-                originDownLength: 500,
-                originArcLength: 3000,
-                // originLength: 4000,
-
-                scaleUp: 2,
-                scaleDown: 10,
-
-                upLength: 100,
-                downLength: 100,
-                arcLength: 600,
-                // x, y 方向的长度
-                // xLength: 270,
-                // yLength: 42,
 
                 cylinderNum: 118, // 辊子的个数
                 coolerMaterial: undefined,
@@ -251,7 +234,7 @@
 
                 let roller = {}
                 let position = 0, xIn = 0, yIn = 0, xOut = 0, yOut = 0, angle = 0
-                let countCenterStart = 0, countCenterEnd = 0 // 用做调整渐近线部分的坐标
+                let arcLength = coordinate.center_end_distance - coordinate.center_start_distance
                 for (let i = 0; i < rollers.length; i += 1) {
                     roller = rollers[i]
                     position = (roller.distance + coordinate.level_height) / this.zScale
@@ -265,32 +248,14 @@
                         yOut = roller.outer_y / this.zScale
                         xIn = -rIn + roller.inner_diameter / this.zScale / 2
                         yIn = roller.inner_y / this.zScale
-                    } else if (position >= this.centerStart && position <= this.arcStart) {
-                        countCenterStart++
-                        angle = (roller.angle - this.factor * (this.totalCenterStart - countCenterStart)) * Math.PI / 180
+                    } else if (position >= this.centerStart && position <= this.centerEnd) {
+                        angle = 90 * (roller.distance - coordinate.center_start_distance) / arcLength * Math.PI / 180
                         let xy1 = this.calculateXY(0, 0, rOut + roller.outer_diameter / this.zScale / 2, angle)
                         xOut = xy1.x2
                         yOut = xy1.y2
                         let xy2 = this.calculateXY(0, 0, rIn - roller.inner_diameter / this.zScale / 2, angle)
                         xIn = xy2.x2
                         yIn = xy2.y2
-                    } else if (position >= this.arcStart && position <= this.arcEnd) {
-                        angle = roller.angle * Math.PI / 180
-                        let xy1 = this.calculateXY(0, 0, rOut + roller.outer_diameter / this.zScale / 2, angle)
-                        xOut = xy1.x2
-                        yOut = xy1.y2
-                        let xy2 = this.calculateXY(0, 0, rIn - roller.inner_diameter / this.zScale / 2, angle)
-                        xIn = xy2.x2
-                        yIn = xy2.y2
-                    } else if (position > this.arcEnd && position <= this.centerEnd) {
-                        angle = (roller.angle + this.factor * countCenterEnd * 1.3) * Math.PI / 180
-                        let xy1 = this.calculateXY(0, 0, rOut + roller.outer_diameter / this.zScale / 2, angle)
-                        xOut = xy1.x2
-                        yOut = xy1.y2
-                        let xy2 = this.calculateXY(0, 0, rIn - roller.inner_diameter / this.zScale / 2, angle)
-                        xIn = xy2.x2
-                        yIn = xy2.y2
-                        countCenterEnd++
                     } else {
                         xOut = roller.outer_x / this.zScale
                         yOut = -rOut - roller.outer_diameter / this.zScale / 2
@@ -326,6 +291,7 @@
                 let zone = {}
                 let x, y, angle = 0
                 let position, index = 0
+                let arcLength = coordinate.center_end_distance - coordinate.center_start_distance
                 // 构建冷却区标记
                 for (let i = 0; i < coolingZones.length; i++) {
                     zone = coolingZones[i]
@@ -336,7 +302,7 @@
                         y = rollers[index].inner_y / this.zScale
                         angle = 0
                     } else if (position >= this.centerStart && position <= this.centerEnd) {
-                        angle = rollers[index].angle * Math.PI / 180
+                        angle = 90 * (rollers[index].distance - coordinate.center_start_distance) / arcLength * Math.PI / 180
                         let xy = this.calculateXY(0, 0, rIn - offset, angle)
                         x = xy.x2
                         y = xy.y2
@@ -359,7 +325,7 @@
                         y = rollers[index].inner_y / this.zScale
                         angle = 0
                     } else if (position >= this.centerStart && position <= this.centerEnd) {
-                        angle = rollers[index].angle * Math.PI / 180
+                        angle = 90 * (rollers[index].distance - coordinate.center_start_distance) / arcLength * Math.PI / 180
                         let xy = this.calculateXY(0, 0, rIn - offset1, angle)
                         x = xy.x2
                         y = xy.y2
@@ -425,12 +391,13 @@
                 let position, angle = 0
                 let x1, y1, x2, y2
                 let points = []
+                let arcLength = coordinate.center_end_distance - coordinate.center_start_distance
                 position = (rollers[start].distance + coordinate.level_height) / this.zScale
                 if (position <= this.centerStart) {
                     x1 = -rIn + offset
                     y1 = rollers[start].inner_y / this.zScale
                 } else if (position >= this.centerStart && position <= this.centerEnd) {
-                    angle = rollers[start].angle * Math.PI / 180
+                    angle = 90 * (rollers[start].distance - coordinate.center_start_distance) / arcLength * Math.PI / 180
                     let xy1 = this.calculateXY(0, 0, rIn - offset, angle)
                     x1 = xy1.x2
                     y1 = xy1.y2
@@ -443,7 +410,7 @@
                     x2 = -rIn + offset
                     y2 = rollers[end].inner_y / this.zScale
                 } else if (position >= this.centerStart && position <= this.centerEnd) {
-                    angle = rollers[end].angle * Math.PI / 180
+                    angle = 90 * (rollers[end].distance - coordinate.center_start_distance) / arcLength * Math.PI / 180
                     let xy1 = this.calculateXY(0, 0, rIn - offset, angle)
                     x2 = xy1.x2
                     y2 = xy1.y2
@@ -459,13 +426,14 @@
                 let x1, y1, x2, y2
                 let points = []
                 position = (rollers[index].distance + coordinate.level_height) / this.zScale
+                let arcLength = coordinate.center_end_distance - coordinate.center_start_distance
                 if (position <= this.centerStart) {
                     x1 = -rIn
                     y1 = rollers[index].inner_y / this.zScale
                     x2 = x1 + offset
                     y2 = y1
                 } else if (position >= this.centerStart && position <= this.centerEnd) {
-                    angle = rollers[index].angle * Math.PI / 180
+                    angle = 90 * (rollers[index].distance - coordinate.center_start_distance) / arcLength * Math.PI / 180
                     let xy1 = this.calculateXY(0, 0, rIn, angle)
                     x1 = xy1.x2
                     y1 = xy1.y2
@@ -488,32 +456,35 @@
             buildInternalShapesNotFull(rOut, rIn, data) {
                 let colors = []
                 let positions = []
-                if (data.end - data.start >= this.scaleDown) {
-                    let n = data.up.left.length
-                    let k = data.up.front.length
-                    let hk = k / 2
+                let width = data.sides.up.length
+                let length = data.sides.up[0].length
+                let halfLength = length / 2
+                // let xStep = data.x_scale
+                // let yStep = data.y_scale
+                let zStep = data.z_scale
+                let arcLength = this.arcEnd - this.arcStart
+                if (data.end - data.start >= zStep) {
                     // down.down特殊处理，因为总是需要底部的切片
                     // down
-                    let step = 90 / (this.arcLength / this.scaleUp)
-                    for (let i = 0; i < k; i++) {
-                        for (let j = 0; j < n; j++) {
+                    for (let i = 0; i < width; i++) {
+                        for (let j = 0; j < length; j++) {
                             // positions
-                            if (data.end <= this.originUpLength) {
-                                let z = i - hk
-                                positions.push(j, rOut + (this.upLength - data.end / this.scaleDown * this.scaleUp), z)
-                            } else if (data.end <= this.originUpLength + this.originArcLength) {
-                                let r = rOut - j
-                                let xy = this.calculateXY(rOut, rOut, r, ((data.end / this.scaleDown - this.upLength / this.scaleUp) * step) - 180)
+                            if (data.end <= this.centerStart) {
+                                let z = j - halfLength
+                                positions.push(-rIn - i, this.centerStart - data.end - this.levelHeight, z)
+                            } else if (data.end <= this.centerEnd) {
+                                let r = rOut - i
+                                let xy = this.calculateXY(0, 0, r, 90 * (data.end - this.centerStart) / arcLength * Math.PI / 180)
                                 const x = xy.x2
                                 const y = xy.y2
-                                let z = i - hk
+                                let z = j - halfLength
                                 positions.push(x, y, z)
-                            } else if (data.end <= this.originLength) {
-                                let z = i - hk
-                                positions.push(rOut + this.scaleUp * (data.end - this.originUpLength - this.originArcLength) / this.scaleDown, j, z)
+                            } else {
+                                let z = j - halfLength
+                                positions.push(data.end - this.centerEnd, -rIn - i, z)
                             }
                             // colors
-                            const arr = this.heatmap.pickColor(Math.floor(data.down.down[j][i]) % this.originTemperature)
+                            const arr = this.heatmap.pickColor(Math.floor(data.sides.down[i][j]) % this.originTemperature)
 
                             const vx = arr[0] / 255
                             const vy = arr[1] / 255
@@ -523,26 +494,25 @@
                         }
                     }
                     // up
-                    for (let i = 0; i < k; i++) {
-                        for (let j = 0; j < n; j++) {
+                    for (let i = 0; i < width; i++) {
+                        for (let j = 0; j < length; j++) {
                             // positions
-                            if (data.start <= this.originUpLength) {
-                                let z = i - hk
-                                positions.push(j, rOut + (this.upLength - data.start / this.scaleDown * this.scaleUp), z)
-                            } else if (data.start <= this.originUpLength + this.originArcLength) {
-                                let r = rOut - j
-                                let xy = this.calculateXY(rOut, rOut, r, ((data.start / this.scaleDown - this.upLength / this.scaleUp) * step) - 180)
+                            if (data.start <= this.centerStart) {
+                                let z = j - halfLength
+                                positions.push(-rIn - i, this.centerStart - data.start - this.levelHeight, z)
+                            } else if (data.start <= this.centerEnd) {
+                                let r = rOut - i
+                                let xy = this.calculateXY(0, 0, r, 90 * (data.start - this.centerStart) / arcLength * Math.PI / 180)
                                 const x = xy.x2
                                 const y = xy.y2
-                                let z = i - hk
+                                let z = j - halfLength
                                 positions.push(x, y, z)
-                            } else if (data.start <= this.originLength) {
-                                let z = i - hk
-                                positions.push(rOut + this.scaleUp * (data.start - this.originUpLength - this.originArcLength) / this.scaleDown, j, z)
+                            } else {
+                                let z = j - halfLength
+                                positions.push(data.start - this.centerEnd, -rIn - i, z)
                             }
-
                             // colors
-                            const arr = this.heatmap.pickColor(Math.floor(data.up.up[j][i]) % this.originTemperature)
+                            const arr = this.heatmap.pickColor(Math.floor(data.sides.up[i][j]) % this.originTemperature)
 
                             const vx = arr[0] / 255
                             const vy = arr[1] / 255
@@ -551,163 +521,18 @@
                             colors.push(vx, vy, vz)
                         }
                     }
-                    if (data.end >= this.scaleDown) { // 结晶器部分
-                        let end = Math.ceil(Math.min(data.end, this.originUpLength) / this.scaleDown)
-                        let start = Math.floor(Math.max(data.start, 0) / this.scaleDown)
-                        // left
-                        for (let i = 0; i < n; i++) {
-                            for (let j = start; j < end; j++) {
-                                // positions
-                                const x = i
-                                const y = rOut + this.upLength - j * this.scaleUp
-                                positions.push(x, y, hk)
-                                // colors
-                                const arr = this.heatmap.pickColor(Math.floor(data.up.left[i][j]) % this.originTemperature)
-                                const vx = arr[0] / 255
-                                const vy = arr[1] / 255
-                                const vz = arr[2] / 255
-
-                                colors.push(vx, vy, vz)
-                            }
-                        }
-                        // right
-                        for (let i = 0; i < n; i++) {
-                            for (let j = start; j < end; j++) {
-                                // positions
-                                const x = i
-                                const y = rOut + this.upLength - j * this.scaleUp
-                                positions.push(x, y, -hk)
-                                // colors
-                                const arr = this.heatmap.pickColor(Math.floor(data.up.right[i][j]) % this.originTemperature)
-
-                                const vx = arr[0] / 255
-                                const vy = arr[1] / 255
-                                const vz = arr[2] / 255
-
-                                colors.push(vx, vy, vz)
-                            }
-                        }
-                        // front
-                        for (let i = 0; i < k; i++) {
-                            for (let j = start; j < end; j++) {
-                                // positions
-                                const z = i - hk
-                                const y = rOut + this.upLength - j * this.scaleUp
-                                positions.push(n, y, z)
-                                // colors
-                                const arr = this.heatmap.pickColor(Math.floor(data.up.front[i][j]) % this.originTemperature)
-
-                                const vx = arr[0] / 255
-                                const vy = arr[1] / 255
-                                const vz = arr[2] / 255
-
-                                colors.push(vx, vy, vz)
-                            }
-                        }
-                        // back
-                        for (let i = 0; i < k; i++) {
-                            for (let j = start; j < end; j++) {
-                                // positions
-                                const z = i - hk
-                                const y = rOut + this.upLength - j * this.scaleUp
-                                positions.push(0, y, z)
-                                // colors
-                                const arr = this.heatmap.pickColor(Math.floor(data.up.back[i][j]) % this.originTemperature)
-
-                                const vx = arr[0] / 255
-                                const vy = arr[1] / 255
-                                const vz = arr[2] / 255
-
-                                colors.push(vx, vy, vz)
-                            }
-                        }
-                    }
-                    if (data.end > this.originUpLength) { // 弧形部分
-                        let end = Math.ceil(Math.min(data.end, this.originUpLength + this.originArcLength) / this.scaleDown)
-                        let start = Math.floor(Math.max(data.start, this.originUpLength) / this.scaleDown)
-                        // left
-                        for (let i = 0; i < n; i++) {
-                            let r = rOut - i
-                            for (let j = start; j < end; j++) {
-                                // positions
-                                let xy = this.calculateXY(rOut, rOut, r, ((j - this.upLength / this.scaleUp) * step) - 180)
-                                const x = xy.x2
-                                const y = xy.y2
-                                positions.push(x, y, hk)
-                                // colors
-                                const arr = this.heatmap.pickColor(Math.floor(data.arc.left[i][j - this.upLength / this.scaleUp]) % this.originTemperature)
-                                const vx = arr[0] / 255
-                                const vy = arr[1] / 255
-                                const vz = arr[2] / 255
-
-                                colors.push(vx, vy, vz)
-                            }
-                        }
-                        // right
-                        for (let i = 0; i < n; i++) {
-                            let r = rOut - i
-                            for (let j = start; j < end; j++) {
-                                // positions
-                                let xy = this.calculateXY(rOut, rOut, r, ((j - this.upLength / this.scaleUp) * step) - 180)
-                                const x = xy.x2
-                                const y = xy.y2
-                                positions.push(x, y, -hk)
-                                // colors
-                                const arr = this.heatmap.pickColor(Math.floor(data.arc.right[i][j - this.upLength / this.scaleUp]) % this.originTemperature)
-                                const vx = arr[0] / 255
-                                const vy = arr[1] / 255
-                                const vz = arr[2] / 255
-
-                                colors.push(vx, vy, vz)
-                            }
-                        }
-                        // back
-                        for (let i = 0; i < k; i++) {
-                            for (let j = start; j < end; j++) {
-                                // positions
-                                let xy = this.calculateXY(rOut, rOut, rOut, ((j - this.upLength / this.scaleUp) * step) - 180)
-                                const x = xy.x2
-                                const y = xy.y2
-                                positions.push(x, y, i - hk)
-                                // colors
-                                const arr = this.heatmap.pickColor(Math.floor(data.arc.back[i][j - this.upLength / this.scaleUp]) % this.originTemperature)
-                                const vx = arr[0] / 255
-                                const vy = arr[1] / 255
-                                const vz = arr[2] / 255
-
-                                colors.push(vx, vy, vz)
-                            }
-                        }
-                        // front
-                        for (let i = 0; i < k; i++) {
-                            for (let j = start; j < end; j++) {
-                                // positions
-                                let xy = this.calculateXY(rOut, rOut, rIn, ((j - this.upLength / this.scaleUp) * step) - 180)
-                                const x = xy.x2
-                                const y = xy.y2
-                                positions.push(x, y, i - hk)
-                                // colors
-                                const arr = this.heatmap.pickColor(Math.floor(data.arc.front[i][j - this.upLength / this.scaleUp]) % this.originTemperature)
-                                const vx = arr[0] / 255
-                                const vy = arr[1] / 255
-                                const vz = arr[2] / 255
-
-                                colors.push(vx, vy, vz)
-                            }
-                        }
-                    }
-
-                    if (data.end > this.originUpLength + this.originArcLength && data.end <= this.originLength) { // 出口部分
-                        let end = Math.ceil(Math.min(data.end, this.originLength) / this.scaleDown)
-                        let start = Math.floor(Math.max(data.start, this.originUpLength + this.originArcLength) / this.scaleDown)
+                    if (data.end - data.start >= zStep) { // up
+                        let end = Math.ceil(Math.min(data.end, this.centerStart))
+                        let start = Math.floor(Math.max(data.start, 0))
                         // left
                         for (let i = start; i < end; i++) {
-                            for (let j = 0; j < n; j++) {
+                            for (let j = 0; j < width; j++) {
                                 // positions
-                                const x = rOut + (i - (this.upLength + this.arcLength) / this.scaleUp) * this.scaleUp
-                                positions.push(x, j, hk)
+                                const x = -rIn - j
+                                const y = this.centerStart - i - this.levelHeight
+                                positions.push(x, y, halfLength)
                                 // colors
-                                const arr = this.heatmap.pickColor(Math.floor(data.down.left[j][i - (this.upLength + this.arcLength) / this.scaleUp]) % this.originTemperature)
+                                const arr = this.heatmap.pickColor(Math.floor(data.sides.left[i][j]) % this.originTemperature)
                                 const vx = arr[0] / 255
                                 const vy = arr[1] / 255
                                 const vz = arr[2] / 255
@@ -717,12 +542,29 @@
                         }
                         // right
                         for (let i = start; i < end; i++) {
-                            for (let j = 0; j < n; j++) {
+                            for (let j = 0; j < width; j++) {
                                 // positions
-                                const x = rOut + (i - (this.upLength + this.arcLength) / this.scaleUp) * this.scaleUp
-                                positions.push(x, j, -hk)
+                                const x = -rIn - j
+                                const y = this.centerStart - i - this.levelHeight
+                                positions.push(x, y, -halfLength)
                                 // colors
-                                const arr = this.heatmap.pickColor(Math.floor(data.down.right[j][i - (this.upLength + this.arcLength) / 2]) % this.originTemperature)
+                                const arr = this.heatmap.pickColor(Math.floor(data.sides.left[i][j]) % this.originTemperature)
+                                const vx = arr[0] / 255
+                                const vy = arr[1] / 255
+                                const vz = arr[2] / 255
+
+                                colors.push(vx, vy, vz)
+                            }
+                        }
+                        // front
+                        for (let i = start; i < end; i++) {
+                            for (let j = 0; j < length; j++) {
+                                // positions
+                                const z = j - halfLength
+                                const y = this.centerStart - i - this.levelHeight
+                                positions.push(-rIn, y, z)
+                                // colors
+                                const arr = this.heatmap.pickColor(Math.floor(data.sides.front[i][j]) % this.originTemperature)
 
                                 const vx = arr[0] / 255
                                 const vy = arr[1] / 255
@@ -732,31 +574,14 @@
                             }
                         }
                         // back
-                        for (let i = 0; i < k; i++) {
-                            for (let j = start; j < end; j++) {
+                        for (let i = start; i < end; i++) {
+                            for (let j = 0; j < length; j++) {
                                 // positions
-                                const z = i - hk
-                                const x = rOut + (j - (this.upLength + this.arcLength) / this.scaleUp) * this.scaleUp
-                                positions.push(x, 0, z)
+                                const z = j - halfLength
+                                const y = this.centerStart - i - this.levelHeight
+                                positions.push(-rOut, y, z)
                                 // colors
-                                const arr = this.heatmap.pickColor(Math.floor(data.down.back[i][j - (this.upLength + this.arcLength) / this.scaleUp]) % this.originTemperature)
-
-                                const vx = arr[0] / 255
-                                const vy = arr[1] / 255
-                                const vz = arr[2] / 255
-
-                                colors.push(vx, vy, vz)
-                            }
-                        }
-                        // front
-                        for (let i = 0; i < k; i++) {
-                            for (let j = start; j < end; j++) {
-                                // positions
-                                const z = i - hk
-                                const x = rOut + (j - (this.upLength + this.arcLength) / this.scaleUp) * this.scaleUp
-                                positions.push(x, n, z)
-                                // colors
-                                const arr = this.heatmap.pickColor(Math.floor(data.down.front[i][j - (this.upLength + this.arcLength) / this.scaleUp]) % this.originTemperature)
+                                const arr = this.heatmap.pickColor(Math.floor(data.sides.front[i][j]) % this.originTemperature)
 
                                 const vx = arr[0] / 255
                                 const vy = arr[1] / 255
@@ -766,6 +591,150 @@
                             }
                         }
                     }
+                    // if (data.end > this.originUpLength) { // 弧形部分
+                    //     let end = Math.ceil(Math.min(data.end, this.originUpLength + this.originArcLength) / this.scaleDown)
+                    //     let start = Math.floor(Math.max(data.start, this.originUpLength) / this.scaleDown)
+                    //     // left
+                    //     for (let i = 0; i < n; i++) {
+                    //         let r = rOut - i
+                    //         for (let j = start; j < end; j++) {
+                    //             // positions
+                    //             let xy = this.calculateXY(rOut, rOut, r, ((j - this.upLength / this.scaleUp) * step) - 180)
+                    //             const x = xy.x2
+                    //             const y = xy.y2
+                    //             positions.push(x, y, hk)
+                    //             // colors
+                    //             const arr = this.heatmap.pickColor(Math.floor(data.arc.left[i][j - this.upLength / this.scaleUp]) % this.originTemperature)
+                    //             const vx = arr[0] / 255
+                    //             const vy = arr[1] / 255
+                    //             const vz = arr[2] / 255
+                    //
+                    //             colors.push(vx, vy, vz)
+                    //         }
+                    //     }
+                    //     // right
+                    //     for (let i = 0; i < n; i++) {
+                    //         let r = rOut - i
+                    //         for (let j = start; j < end; j++) {
+                    //             // positions
+                    //             let xy = this.calculateXY(rOut, rOut, r, ((j - this.upLength / this.scaleUp) * step) - 180)
+                    //             const x = xy.x2
+                    //             const y = xy.y2
+                    //             positions.push(x, y, -hk)
+                    //             // colors
+                    //             const arr = this.heatmap.pickColor(Math.floor(data.arc.right[i][j - this.upLength / this.scaleUp]) % this.originTemperature)
+                    //             const vx = arr[0] / 255
+                    //             const vy = arr[1] / 255
+                    //             const vz = arr[2] / 255
+                    //
+                    //             colors.push(vx, vy, vz)
+                    //         }
+                    //     }
+                    //     // back
+                    //     for (let i = 0; i < k; i++) {
+                    //         for (let j = start; j < end; j++) {
+                    //             // positions
+                    //             let xy = this.calculateXY(rOut, rOut, rOut, ((j - this.upLength / this.scaleUp) * step) - 180)
+                    //             const x = xy.x2
+                    //             const y = xy.y2
+                    //             positions.push(x, y, i - hk)
+                    //             // colors
+                    //             const arr = this.heatmap.pickColor(Math.floor(data.arc.back[i][j - this.upLength / this.scaleUp]) % this.originTemperature)
+                    //             const vx = arr[0] / 255
+                    //             const vy = arr[1] / 255
+                    //             const vz = arr[2] / 255
+                    //
+                    //             colors.push(vx, vy, vz)
+                    //         }
+                    //     }
+                    //     // front
+                    //     for (let i = 0; i < k; i++) {
+                    //         for (let j = start; j < end; j++) {
+                    //             // positions
+                    //             let xy = this.calculateXY(rOut, rOut, rIn, ((j - this.upLength / this.scaleUp) * step) - 180)
+                    //             const x = xy.x2
+                    //             const y = xy.y2
+                    //             positions.push(x, y, i - hk)
+                    //             // colors
+                    //             const arr = this.heatmap.pickColor(Math.floor(data.arc.front[i][j - this.upLength / this.scaleUp]) % this.originTemperature)
+                    //             const vx = arr[0] / 255
+                    //             const vy = arr[1] / 255
+                    //             const vz = arr[2] / 255
+                    //
+                    //             colors.push(vx, vy, vz)
+                    //         }
+                    //     }
+                    // }
+                    //
+                    // if (data.end > this.originUpLength + this.originArcLength && data.end <= this.originLength) { // 出口部分
+                    //     let end = Math.ceil(Math.min(data.end, this.originLength) / this.scaleDown)
+                    //     let start = Math.floor(Math.max(data.start, this.originUpLength + this.originArcLength) / this.scaleDown)
+                    //     // left
+                    //     for (let i = start; i < end; i++) {
+                    //         for (let j = 0; j < n; j++) {
+                    //             // positions
+                    //             const x = rOut + (i - (this.upLength + this.arcLength) / this.scaleUp) * this.scaleUp
+                    //             positions.push(x, j, hk)
+                    //             // colors
+                    //             const arr = this.heatmap.pickColor(Math.floor(data.down.left[j][i - (this.upLength + this.arcLength) / this.scaleUp]) % this.originTemperature)
+                    //             const vx = arr[0] / 255
+                    //             const vy = arr[1] / 255
+                    //             const vz = arr[2] / 255
+                    //
+                    //             colors.push(vx, vy, vz)
+                    //         }
+                    //     }
+                    //     // right
+                    //     for (let i = start; i < end; i++) {
+                    //         for (let j = 0; j < n; j++) {
+                    //             // positions
+                    //             const x = rOut + (i - (this.upLength + this.arcLength) / this.scaleUp) * this.scaleUp
+                    //             positions.push(x, j, -hk)
+                    //             // colors
+                    //             const arr = this.heatmap.pickColor(Math.floor(data.down.right[j][i - (this.upLength + this.arcLength) / 2]) % this.originTemperature)
+                    //
+                    //             const vx = arr[0] / 255
+                    //             const vy = arr[1] / 255
+                    //             const vz = arr[2] / 255
+                    //
+                    //             colors.push(vx, vy, vz)
+                    //         }
+                    //     }
+                    //     // back
+                    //     for (let i = 0; i < k; i++) {
+                    //         for (let j = start; j < end; j++) {
+                    //             // positions
+                    //             const z = i - hk
+                    //             const x = rOut + (j - (this.upLength + this.arcLength) / this.scaleUp) * this.scaleUp
+                    //             positions.push(x, 0, z)
+                    //             // colors
+                    //             const arr = this.heatmap.pickColor(Math.floor(data.down.back[i][j - (this.upLength + this.arcLength) / this.scaleUp]) % this.originTemperature)
+                    //
+                    //             const vx = arr[0] / 255
+                    //             const vy = arr[1] / 255
+                    //             const vz = arr[2] / 255
+                    //
+                    //             colors.push(vx, vy, vz)
+                    //         }
+                    //     }
+                    //     // front
+                    //     for (let i = 0; i < k; i++) {
+                    //         for (let j = start; j < end; j++) {
+                    //             // positions
+                    //             const z = i - hk
+                    //             const x = rOut + (j - (this.upLength + this.arcLength) / this.scaleUp) * this.scaleUp
+                    //             positions.push(x, n, z)
+                    //             // colors
+                    //             const arr = this.heatmap.pickColor(Math.floor(data.down.front[i][j - (this.upLength + this.arcLength) / this.scaleUp]) % this.originTemperature)
+                    //
+                    //             const vx = arr[0] / 255
+                    //             const vy = arr[1] / 255
+                    //             const vz = arr[2] / 255
+                    //
+                    //             colors.push(vx, vy, vz)
+                    //         }
+                    //     }
+                    // }
                 }
                 this.colors = colors
                 this.positions = positions
@@ -975,7 +944,7 @@
                 geometry.setAttribute('position', new THREE.Float32BufferAttribute(this.positions, 3));
                 geometry.setAttribute('color', new THREE.Float32BufferAttribute(this.colors, 3));
                 geometry.computeBoundingSphere();
-                const material = new THREE.PointsMaterial({size: 5, vertexColors: true});
+                const material = new THREE.PointsMaterial({size: 6, vertexColors: true});
                 this.points = new THREE.Points(geometry, material);
                 this.group.add(this.points)
             },
@@ -1007,6 +976,7 @@
                 self.originMd = data.md.length
                 self.originXLength = data.cross_profile.length
                 self.originYLength = data.cross_profile.width
+                self.levelHeight = data.coordinate.level_height / self.zScale
 
                 self.md = self.originMd / self.zScale
                 self.xLength = self.originXLength / self.xScale
@@ -1018,27 +988,16 @@
                 self.arcLength = (self.rOut - self.yLength / 2) * 2 * Math.PI / 4
 
                 // 获取近似圆弧的起始位置距离液面的距离
-                self.centerStart = (data.coordinate.center_start_distance + data.coordinate.level_height) / this.zScale
-                self.centerEnd = (data.coordinate.center_end_distance + data.coordinate.level_height) / this.zScale
-                self.arcStart = (data.coordinate.arc_start_distance + data.coordinate.level_height) / this.zScale
-                self.arcEnd = (data.coordinate.arc_end_distance + data.coordinate.level_height) / this.zScale
-
-                // 计算在开始进入圆弧的渐近线中辊子的数量
-                let roller = {}
-                let position = 0
-                for (let i = 0; i < data.secondary_cooling_zone.length; i += 1) {
-                    roller = data.secondary_cooling_zone[i]
-                    position = (roller.distance + data.coordinate.level_height) / this.zScale
-                    if (position >= this.centerStart && position <= this.arcStart) {
-                        self.totalCenterStart++
-                    }
-                }
+                self.centerStart = (data.coordinate.center_start_distance + data.coordinate.level_height) / self.zScale
+                self.centerEnd = (data.coordinate.center_end_distance + data.coordinate.level_height) / self.zScale
+                self.arcStart = (data.coordinate.arc_start_distance + data.coordinate.level_height) / self.zScale
+                self.arcEnd = (data.coordinate.arc_end_distance + data.coordinate.level_height) / self.zScale
 
                 self.buildShapes(data.coordinate, data.secondary_cooling_zone, data.cooling_zone, data.segments)
             })
 
             this.$root.$on("new_field_data", (data) => {
-                // console.log(data)
+                console.log(data)
                 if (data.is_full) {
                     this.fullCount++
                     if (this.fullCount > 2) {

@@ -1,13 +1,17 @@
 <template>
     <div id="slice_container">
         <div class="currentIndex font_glow">
-            <span>目前显示第 {{sliceIndex}} 个切片</span>
+            <span>当前横截面距离液面顶端距离 {{sliceIndex}} mm</span>
         </div>
-        <div class="data_info font_glow">
-            <div>水平中轴线铸壳厚度：{{HorizontalSolidThickness}}mm / 1350mm</div>
-            <div>水平中轴线液相线离边缘距离：{{HorizontalLiquidThickness}}mm / 1350mm</div>
-            <div>垂直中轴线铸壳厚度：{{VerticalSolidThickness}}mm / 210mm</div>
-            <div>垂直中轴线液相线离边缘距离：{{VerticalLiquidThickness}}mm / 210mm</div>
+        <div class="data_info1 font_glow">
+            <div>窄边中轴线铸壳厚度：{{HorizontalSolidThickness}}mm / 1260mm</div>
+            <br>
+            <div>窄边中轴线液相线离边缘距离：{{HorizontalLiquidThickness}}mm / 1260mm</div>
+        </div>
+        <div class="data_info2 font_glow">
+            <div>宽边中轴线铸壳厚度：{{VerticalSolidThickness}}mm / 230mm</div>
+            <br>
+            <div>宽边中轴线液相线离边缘距离：{{VerticalLiquidThickness}}mm / 230mm</div>
         </div>
         <!--        <div class="bottom">-->
         <!--            <div class="slider_container">-->
@@ -33,18 +37,18 @@
                 <div class="block">
                     <span class="demonstration">分区信息</span>
                     <el-slider
-                            :max="4000"
+                            :max="max"
                             :marks="marks"
                             v-model="sliceIndex"
                             :step="1">
                     </el-slider>
                 </div>
-                <div :style="styleStart" class="mark">{{start === 1 ? "" : start}}</div>
-                <div :style="styleEnd" class="mark">{{end === 4000 ? "" : end}}</div>
             </div>
             <div class="operation">
-                <el-input-number size="mini" v-model="sliceIndex" :step="1" :max="4000" :min="1"></el-input-number>
-                <el-button size="mini" style="margin-left: 10px;" round type="primary" @click="showSliceDetail(sliceIndex - 1)">查看切片</el-button>
+                <el-input-number size="mini" v-model="sliceIndex" :step="1" :max="max" :min="0"></el-input-number>
+                <el-button size="mini" style="margin-left: 10px;" round type="primary"
+                           @click="showSliceDetail(sliceIndex)">查看距离液面距离对应的横截面
+                </el-button>
             </div>
         </div>
         <div class="temp font_glow">
@@ -59,30 +63,16 @@
 
     export default {
         name: "SliceShow",
-        props: ['conn', 'start', 'end'],
+        props: ['conn', 'config'],
         data() {
             return {
                 sliceLength: 100,
                 marks: {
-                    0: 'MD',
-                    500: 'Seg_0',
-                    1093.2: 'Seg_1',  // 20
-                    1300.82: "Seg_2", // 27
-                    1508.44: "Seq_3", // 34
-                    1716.06: "Seq_4", // 41
-                    1923.68: "Seq_5", // 48
-                    2131.3: "Seq_6", // 55
-                    2338.92: "Seq_7", // 62
-                    2546.54: "Seq_8", // 69
-                    2754.16: "Seq_9", // 76
-                    2961.78: "Seq_10", // 83
-                    3169.4: "Seq_11",// 90
-                    3377.02: "Seq_12",// 97
-                    3584.64: "Seq_13",// 104
-                    3792.26: "Seq_14",// 111
-                    4000: "4000",// 118
+                    0: '',
                 },
                 max: 0,
+                min: 0,
+                cap: 0,
                 styleStart: "",
                 styleEnd: "",
 
@@ -124,7 +114,7 @@
             init: function () {
                 this.scene = new THREE.Scene()
                 this.camera = new THREE.PerspectiveCamera(50, this.width / this.height, 1, 10000)
-                this.camera.position.set(0, 0, 1650);
+                this.camera.position.set(0, 0, 800);
                 this.scene.add(new THREE.AmbientLight(0xffffff))
                 this.scene.background = new THREE.Color(0xffffff)
 
@@ -139,7 +129,7 @@
                 for (let canvas of this.heatmap.canvas) {
                     this.container.appendChild(canvas)
                 }
-                this.buildShapesInit(this.sliceWidth, this.sliceHeight)
+                this.buildShapesInit()
                 this.container.appendChild(this.renderer.domElement)
 
                 // let controls = new OrbitControls(this.camera, this.renderer.domElement)
@@ -149,23 +139,23 @@
                 this.pointer = new THREE.Vector2()
 
                 window.addEventListener('resize', this.onWindowResize, false)
-                this.renderer.domElement.addEventListener( 'pointermove', this.onPointerMove )
+                this.renderer.domElement.addEventListener('pointermove', this.onPointerMove)
             },
-            onPointerMove: function(event) {
-                this.pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-                this.pointer.y = - ( event.clientY / (window.innerHeight - 20)) * 2 + 1;
+            onPointerMove: function (event) {
+                this.pointer.x = (event.clientX / (window.innerWidth )) * 2 - 1;
+                this.pointer.y = -(event.clientY / (window.innerHeight)) * 2 + 1;
             },
-            buildShapesInit: function (width, height) {
-                let hw = width * this.scaleFactor / 2
-                let hh = height * this.scaleFactor / 2
+            buildShapesInit: function () {
                 let colors = []
                 let positions = []
                 let temps = []
                 let m = this.sliceHeight
                 let n = this.sliceWidth
+                let hh = m / 2
+                let hw = n / 2
                 for (let i = 0; i < m; i++) {
                     for (let j = 0; j < n; j++) {
-                        positions.push(j * this.scaleFactor - hw, i * this.scaleFactor - hh, 0)
+                        positions.push(j - hw, i - hh, 0)
                         const arr = this.heatmap.pickColor(1)
                         const vx = arr[0] / 255
                         const vy = arr[1] / 255
@@ -186,7 +176,7 @@
                 this.points = new THREE.Points(geometry, material);
                 this.group.add(this.points)
             },
-            buildShapes: function (data, width, height) {
+            buildShapes: function (data) {
                 let m = data.length
                 if (m === 0) {
                     return
@@ -195,13 +185,11 @@
                 if (n === 0) {
                     return
                 }
-                // console.log(m, n)
                 if (data[0][0] === -1) { // 为空
                     return
                 }
-
-                let hw = width * this.scaleFactor / 2
-                let hh = height * this.scaleFactor / 2
+                let hh = m * this.scaleFactor / 2
+                let hw = n * this.scaleFactor / 2
                 let colors = []
                 let positions = []
                 let temps = []
@@ -310,17 +298,17 @@
                 const geometry = this.points.geometry;
                 const attributes = geometry.attributes;
 
-                this.raycaster.setFromCamera( this.pointer, this.camera );
+                this.raycaster.setFromCamera(this.pointer, this.camera);
 
-                this.intersects = this.raycaster.intersectObject( this.points );
+                this.intersects = this.raycaster.intersectObject(this.points);
 
-                if ( this.intersects.length > 0 ) {
-                    if ( this.INTERSECTED !== this.intersects[ 0 ].index ) {
-                        this.INTERSECTED = this.intersects[ 0 ].index
-                        this.pointTemp = attributes.temp.array[ this.INTERSECTED ]
+                if (this.intersects.length > 0) {
+                    if (this.INTERSECTED !== this.intersects[0].index) {
+                        this.INTERSECTED = this.intersects[0].index
+                        this.pointTemp = attributes.temp.array[this.INTERSECTED]
                     }
 
-                } else if ( this.INTERSECTED !== null ) {
+                } else if (this.INTERSECTED !== null) {
                     this.INTERSECTED = null;
                 }
                 this.renderer.render(this.scene, this.camera)
@@ -331,6 +319,7 @@
                 //     type: "start_push_slice_detail",
                 //     content: String(index)
                 // }
+                index = index / 10 - 1
                 let message = {
                     type: "generate_slice",
                     content: String(index)
@@ -342,19 +331,28 @@
             }
         },
         mounted() {
-            this.styleStart = 'transform: translateX(-50%); left:' + this.start / 4000 * 100 + '%;'
-            this.styleEnd = 'transform: translateX(-50%); left:' + this.end / 4000 * 100 + '%;'
-
-
             this.container = document.getElementById("slice_container")
             this.width = this.container.clientWidth
             this.height = this.container.clientHeight
             console.log(this.width, this.height)
-
-            this.sliceWidth = 540
-            this.sliceHeight = 84
+            console.log(this.config)
+            this.sliceWidth = this.config.cross_profile.length
+            this.sliceHeight = this.config.cross_profile.width
             this.init()
             this.animate()
+
+            this.max = this.config.coordinate.z_length
+            // md
+            this.marks[0] = 'md'
+            let index = 0
+            let roller = {}
+            for (let i = 0; i < this.config.cooling_zone.length; i++) {
+                index = this.config.cooling_zone[i].start - 1
+                roller = this.config.secondary_cooling_zone[index]
+                this.marks[roller.distance] = '' + (i + 1)
+            }
+
+            console.log(this.marks)
 
             let self = this
             // this.$root.$on("new_slice_detail", (data) => {
@@ -369,7 +367,7 @@
             // })
 
             this.$root.$on("slice_generated", (data) => {
-                console.log(data)
+                console.log(data, "slice_data")
                 self.buildShapes(data.slice, self.sliceWidth, self.sliceHeight)
                 self.HorizontalSolidThickness = data.horizontal_solid_thickness
                 self.HorizontalLiquidThickness = data.horizontal_liquid_thickness
@@ -407,10 +405,20 @@
         font-weight: bold;
     }
 
-    .data_info {
+    .data_info1 {
         position: absolute;
-        left: 10%;
-        top: 10%;
+        left: 20%;
+        top: 20%;
+        z-index: 999;
+        color: #212121;
+        font-size: large;
+        font-weight: bold;
+    }
+
+    .data_info2 {
+        position: absolute;
+        right: 20%;
+        top: 20%;
         z-index: 999;
         color: #212121;
         font-size: large;
@@ -451,15 +459,6 @@
 
     .slider_container {
         position: relative;
-    }
-
-    .mark {
-        display: inline-block;
-        position: absolute;
-        color: #212121;
-        bottom: -35px;
-        z-index: 10000;
-        font-size: smaller;
     }
 
     .font_glow {
