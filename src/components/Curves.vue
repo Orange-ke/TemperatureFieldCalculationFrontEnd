@@ -1,27 +1,6 @@
 <template>
     <div id="curves_container">
         <el-tabs type="border-card">
-            <el-tab-pane label="纵切面温度变化曲线">
-                <v-chart class="chart" :option="option"></v-chart>
-                <div class="bottom">
-                    <div class="slider_container">
-                        <div class="block">
-                            <span class="demonstration">下标范围</span>
-                            <el-slider
-                                    :max="270"
-                                    v-model="index1"
-                                    :step="1">
-                            </el-slider>
-                        </div>
-                    </div>
-                    <div class="operation">
-                        <el-input-number size="mini" v-model="index1" :step="1" :max="270" :min="1"></el-input-number>
-                        <el-button size="mini" style="margin-left: 10px;" round type="primary"
-                                   @click="showVerticalSlice1AtIndex(index1 - 1)">查看对应下标数据
-                        </el-button>
-                    </div>
-                </div>
-            </el-tab-pane>
             <el-tab-pane label="纵切面温度分布云图">
                 <div class="info">
                     <div>固相线交汇处：{{solidJoin * 10}} mm</div>
@@ -31,35 +10,66 @@
                 <div id="canvas_container" style="width: 100%; height: 820px;"></div>
                 <div class="slice_bottom">
                     <div class="slider_container">
-                        <div class="block">
-                            <span class="demonstration">下标范围</span>
+                        <div>
+                            <span class="demonstration">距离铸坯边界距离mm</span>
                             <el-slider
-                                    :max="270"
+                                    :max="max"
                                     v-model="index2"
                                     :step="1">
                             </el-slider>
                         </div>
                     </div>
                     <div class="operation">
-                        <el-input-number size="mini" v-model="index2" :step="1" :max="270" :min="1"></el-input-number>
+                        <el-input-number size="mini" v-model="index2" :step="1" :max="max" :min="1"></el-input-number>
                         <el-button size="mini" style="margin-left: 10px;" round type="primary"
-                                   @click="showVerticalSlice2AtIndex(index2 - 1)">查看对应下标数据
+                                   @click="showVerticalSlice2AtIndex(index2 - 1)">查看对应距离纵切片数据
                         </el-button>
                     </div>
                 </div>
                 <div class="distance_bottom">
                     <div class="slider_container">
-                        <div class="block" style="padding-top: 10px;">
+                        <div class="block block1 slider-demo-block">
+                            <span class="demonstration">设备分区信息</span>
                             <el-slider
                                     @change="showEdgeAtYIndex(yIndex)"
-                                    :min="5"
-                                    :max="4000"
+                                    :max="maxZLength"
+                                    :marks="casterMarks"
                                     v-model="yIndex"
-                                    :marks="marks"
-                                    :step="5">
+                                    :step="1">
                             </el-slider>
-                            <span class="demonstration">距离结晶器顶端距离(mm)</span>
                         </div>
+                        <div class="block block2 slider-demo-block">
+                            <span class="demonstration">冷却区分区信息</span>
+                            <el-slider
+                                    @change="showEdgeAtYIndex(yIndex)"
+                                    :max="maxZLength"
+                                    :marks="coolingMarks"
+                                    v-model="yIndex"
+                                    :step="1">
+                            </el-slider>
+                        </div>
+                    </div>
+                </div>
+            </el-tab-pane>
+            <el-tab-pane label="纵切面温度变化曲线">
+                <v-chart class="chart" :option="option"></v-chart>
+                <div class="bottom">
+                    <div class="slider_container">
+                        <div class="block block1 slider-demo-block">
+                            <span class="demonstration">距离铸坯边界距离mm</span>
+                            <el-slider
+                                    :max="max"
+                                    :min="1"
+                                    v-model="index1"
+                                    :step="1">
+                            </el-slider>
+                        </div>
+                    </div>
+                    <div class="operation">
+                        <el-input-number size="normal" v-model="index1" :step="1" :max="max" :min="1"></el-input-number>
+                        <el-button size="normal" style="margin-left: 10px;" round type="primary"
+                                   @click="showVerticalSlice1AtIndex(index1)">查看对应距离纵切片温度曲线数据
+                        </el-button>
                     </div>
                 </div>
             </el-tab-pane>
@@ -72,14 +82,8 @@
     import {LineChart} from "echarts/charts";
     import VChart from "vue-echarts";
     // import ECharts modules manually to reduce bundle size
-    import {
-        CanvasRenderer
-    } from 'echarts/renderers'
-    import {
-        GridComponent,
-        TooltipComponent,
-        LegendComponent
-    } from 'echarts/components'
+    import {CanvasRenderer} from 'echarts/renderers'
+    import {GridComponent, LegendComponent, TooltipComponent} from 'echarts/components'
     import * as THREE from "three";
     import {FontLoader} from "three/examples/jsm/loaders/FontLoader";
     import fontJson from "../assets/fonts/helvetiker_bold.typeface.json";
@@ -97,9 +101,11 @@
         components: {
             VChart
         },
-        props: ['conn'],
+        props: ['conn', 'config'],
         data() {
             return {
+                max: 1,
+                maxZLength: 1,
                 index1: 1,
                 option: {
                     tooltip: {
@@ -114,9 +120,9 @@
                     xAxis: [
                         {
                             type: 'value',
-                            name: '离结晶器顶部距离',
+                            name: '离液面距离',
                             min: 0,
-                            max: 40000,
+                            max: 0,
                             position: 'left',
                             axisLabel: {
                                 formatter: '{value} mm'
@@ -155,8 +161,6 @@
                         },
                     ]
                 },
-
-                // pane2
                 container: undefined,
                 width: 0,
                 height: 0,
@@ -170,30 +174,25 @@
                 positions: [],
                 colors: [],
                 temps: [],
-                sliceWidth: 0,
-                sliceHeight: 0,
+                arcLength: 0,
+                xLength: 0,
+                yLength: 0,
+                zScale: 10,
+                xScale: 5,
+                yScale: 5,
+                zScaleUp: 5,
+                yScaleUp: 2,
+                scaleDown: 1.5,
                 rOut: 0,
                 rIn: 0,
 
                 index2: 1,
                 yIndex: 0,
-                marks: {
-                    0: 'MD',
-                    500: 'Seg_0',
-                    1093.2: 'Seg_1',  // 20
-                    1300.82: "Seg_2", // 27
-                    1508.44: "Seq_3", // 34
-                    1716.06: "Seq_4", // 41
-                    1923.68: "Seq_5", // 48
-                    2131.3: "Seq_6", // 55
-                    2338.92: "Seq_7", // 62
-                    2546.54: "Seq_8", // 69
-                    2754.16: "Seq_9", // 76
-                    2961.78: "Seq_10", // 83
-                    3169.4: "Seq_11",// 90
-                    3377.02: "Seq_12",// 97
-                    3584.64: "Seq_13",// 104
-                    3792.26: "Seq_14",// 111
+                casterMarks: {
+                    0: '',
+                },
+                coolingMarks: {
+                    0: '',
                 },
                 curvePointsLiquid: undefined,
                 liquidColors: [],
@@ -214,7 +213,7 @@
                 textMat: undefined,
                 font: undefined,
                 fontHeight: 2,
-                fontSize: 10,
+                fontSize: 15,
                 curveSegments: 10,
                 bevelThickness: 0.1,
                 bevelSize: 0.3,
@@ -225,47 +224,79 @@
             }
         },
         mounted() {
-            this.container = document.getElementById("canvas_container")
+            this.$nextTick(function () {
+                this.container = document.getElementById("canvas_container")
+                this.width = this.container.clientWidth
+                this.height = this.container.clientHeight
+                console.log(this.container.clientWidth, this.container.clientHeight)
 
-            console.log(this.container)
+                this.maxZLength = this.config.coordinate.z_length
+                this.max = this.config.coordinate.length / 2
 
-            this.width = 1823
-            this.height = 822
+                this.zScale = this.config.coordinate.z_scale
+                this.xScale = this.config.coordinate.x_scale
+                this.yScale = this.config.coordinate.y_scale
 
-            console.log(this.width, this.height)
+                this.xLength = this.config.coordinate.length / this.xScale
+                this.yLength = this.config.coordinate.width / this.yScale
 
-            let r = parseFloat((3000 / 5 * 4 / (Math.PI * 2)).toFixed(4))
-            this.rOut = r + 84 / 2
-            this.rIn = r - 84 / 2
+                this.rOut = this.config.coordinate.r / this.zScale
+                this.rIn = this.rOut - this.yLength
 
-            console.log(this.rOut, this.rIn)
+                this.upLength = this.config.coordinate.center_start_distance / this.zScale
+                this.arcLength = (this.config.coordinate.center_end_distance - this.config.coordinate.center_start_distance) / this.zScale
+                this.downLength = (this.config.coordinate.z_length - this.config.coordinate.center_end_distance) / this.zScale
 
-            this.init()
-            this.animate()
+                this.option.xAxis[0].max = this.config.coordinate.z_length
 
-            this.$root.$on("vertical_slice1_generated", (data) => {
-                console.log(data)
-                this.option.series[0].data = data.outer
-                this.option.series[1].data = data.inner
+                console.log(this.rOut, this.rIn)
+
+                this.init()
+                this.animate()
+
+                // 设备分区标记
+                this.casterMarks[0] = 'md'
+                this.coolingMarks[0] = 'md'
+                let index = 0
+                let roller = {}
+                for (let i = 1; i < this.config.segments.length; i++) {
+                    index = this.config.segments[i].start - 1
+                    roller = this.config.secondary_cooling_zone[index]
+                    this.casterMarks[roller.distance] = this.config.segments[i].seg
+                }
+
+                // 冷却区分区标记
+                for (let i = 0; i < this.config.cooling_zone.length; i++) {
+                    index = this.config.cooling_zone[i].start - 1
+                    roller = this.config.secondary_cooling_zone[index]
+                    this.coolingMarks[roller.distance] = '' + (i + 1)
+                }
+
+                this.$root.$on("vertical_slice1_generated", (data) => {
+                    console.log(data)
+                    this.option.series[0].data = data.outer
+                    this.option.series[1].data = data.inner
+                })
+
+                this.$root.$on("vertical_slice2_generated", (data) => {
+                    console.log(data)
+                    this.liquidSolidPositions.liquid = data.liquid
+                    this.liquidSolidPositions.solid = data.solid
+                    this.liquidSolidPositions.liquidJoin = data.liquid_join
+                    this.liquidSolidPositions.solidJoin = data.solid_join
+
+                    this.solidJoin = data.solid_join.join_index
+                    this.liquidJoin = data.liquid_join.join_index
+
+                    this.buildShapes(data.vertical_slice)
+
+                    this.buildCurve(this.rOut, this.rIn, this.liquidSolidPositions.liquid, 400, this.curvePointsLiquid.geometry, this.liquidColors, this.liquidPositions)
+                    this.buildCurve(this.rOut, this.rIn, this.liquidSolidPositions.solid, 1, this.curvePointsSolid.geometry, this.solidColors, this.solidPositions)
+
+                    this.changeText(this.yIndex / 5 - 1)
+                })
             })
 
-            this.$root.$on("vertical_slice2_generated", (data) => {
-                console.log(data)
-                this.liquidSolidPositions.liquid = data.liquid
-                this.liquidSolidPositions.solid = data.solid
-                this.liquidSolidPositions.liquidJoin = data.liquid_join
-                this.liquidSolidPositions.solidJoin = data.solid_join
-
-                this.solidJoin = data.solid_join.join_index
-                this.liquidJoin = data.liquid_join.join_index
-
-                this.buildShapes(data.vertical_slice)
-
-                this.buildCurve(this.rOut, this.rIn, this.liquidSolidPositions.liquid, 400, this.curvePointsLiquid.geometry, this.liquidColors, this.liquidPositions)
-                this.buildCurve(this.rOut, this.rIn, this.liquidSolidPositions.solid, 1, this.curvePointsSolid.geometry, this.solidColors, this.solidPositions)
-
-                this.changeText(this.yIndex / 5 - 1)
-            })
         },
         methods: {
             init: function () {
@@ -275,12 +306,12 @@
                 }
                 this.scene = new THREE.Scene()
                 this.camera = new THREE.PerspectiveCamera(50, this.width / this.height, 1, 10000)
-                this.camera.position.set(0, 150, 700);
+                this.camera.position.set(0, 0, 950);
                 this.scene.add(new THREE.AmbientLight(0xffffff))
                 this.scene.background = new THREE.Color(0xffffff)
 
                 this.group = new THREE.Group()
-                this.group.position.set(-200, -100, 0)
+                this.group.position.set(-150, 190, 0)
                 this.scene.add(this.group)
 
                 this.renderer = new THREE.WebGLRenderer()
@@ -298,18 +329,17 @@
                 this.group.remove(this.line)
                 let parameters = {color: 0x212121}
                 let points = []
-                if (index < 100) {
-                    points.push(new THREE.Vector3(42, this.rOut + (100 - index), 0))
-                    points.push(new THREE.Vector3(84 + 5, this.rOut + (100 - index), 0))
-                } else if (index < 700) {
-                    let step = 90 / 600
-                    let xy1 = this.calculateXY(this.rOut, this.rOut, this.rIn + 42, ((index - 100) * step) - 180)
-                    let xy2 = this.calculateXY(this.rOut, this.rOut, this.rIn - 5, ((index - 100) * step) - 180)
+                if (index < this.upLength) {
+                    points.push(new THREE.Vector3(-this.rOut / this.scaleDown + this.yLength * this.yScaleUp / 2, (this.upLength - index) / this.scaleDown, 0))
+                    points.push(new THREE.Vector3(-this.rOut / this.scaleDown + this.yLength * this.yScaleUp + 5, (this.upLength - index) / this.scaleDown, 0))
+                } else if (index < this.upLength + this.arcLength) {
+                    let xy1 = this.calculateXY(0, 0, this.rOut / this.scaleDown - this.yLength * this.yScaleUp / 2, 90 * (index - this.upLength) / this.arcLength * Math.PI / 180)
+                    let xy2 = this.calculateXY(0, 0, this.rOut / this.scaleDown - (this.yLength * this.yScaleUp + 5), 90 * (index - this.upLength) / this.arcLength * Math.PI / 180)
                     points.push(new THREE.Vector3(xy1.x2, xy1.y2, 0))
                     points.push(new THREE.Vector3(xy2.x2, xy2.y2, 0))
-                } else if (index < 800) {
-                    points.push(new THREE.Vector3(this.rOut + index - 700, 42, 0))
-                    points.push(new THREE.Vector3(this.rOut + index - 700, 84 + 5, 0))
+                } else {
+                    points.push(new THREE.Vector3((index - (this.upLength + this.arcLength)) / this.scaleDown, -this.rOut / this.scaleDown + this.yLength * this.yScaleUp / 2, 0))
+                    points.push(new THREE.Vector3((index - (this.upLength + this.arcLength)) / this.scaleDown, -this.rOut / this.scaleDown + this.yLength * this.yScaleUp + 5, 0))
                 }
                 this.line = this.setLine(points, parameters)
                 this.group.add(this.line)
@@ -320,23 +350,24 @@
                 return new THREE.Line(geometry, material)
             },
             changeText: function (index) {
-                let liquid = this.liquidSolidPositions.liquid
-                let solid = this.liquidSolidPositions.solid
-                if (liquid.length === 0 || solid.length === 0) {
-                    return
-                }
+                // let liquid = this.liquidSolidPositions.liquid
+                // let solid = this.liquidSolidPositions.solid
+                // if (liquid.length === 0 || solid.length === 0) {
+                //     return
+                // }
                 this.group.remove(this.text)
-                let liquidValue = liquid[index] * 5
-                let solidValue = solid[index] * 5
-                let text = "液相线距离坯壳厚度 : " + liquidValue + " (mm) , 固相线相线距离坯壳厚度 : " + solidValue + " (mm)"
-                if (index < 100) {
-                    this.text = this.createText(text, 84 + 5, this.rOut + (100 - index), 0, 0)
-                } else if (index < 700) {
-                    let step = 90 / 600
-                    let xy = this.calculateXY(this.rOut, this.rOut, this.rIn - 5, ((index - 100) * step) - 180)
-                    this.text = this.createText(text, xy.x2, xy.y2, 0, (index - 100) * step * Math.PI / 180)
-                } else if (index < 800) {
-                    this.text = this.createText(text, this.rOut + (index - 700), 84 + 5, 0, 90 * Math.PI / 180)
+                // let liquidValue = liquid[index] * 5
+                let liquidValue = 5
+                // let solidValue = solid[index] * 5
+                let solidValue = 5
+                let text = "L : " + liquidValue + " (mm) , S : " + solidValue + " (mm)"
+                if (index < this.upLength) {
+                    this.text = this.createText(text, -this.rOut / this.scaleDown + this.yLength * this.yScaleUp + 5, (this.upLength - index) / this.scaleDown, 0, 0)
+                } else if (index < this.upLength + this.arcLength) {
+                    let xy = this.calculateXY(0, 0, this.rOut / this.scaleDown - (this.yLength * this.yScaleUp + 5), 90 * (index - this.upLength) / this.arcLength * Math.PI / 180)
+                    this.text = this.createText(text, xy.x2, xy.y2, 0, 90 * (index - this.upLength) / this.arcLength * Math.PI / 180)
+                } else {
+                    this.text = this.createText(text, (index - (this.upLength + this.arcLength)) / this.scaleDown, -this.rOut / this.scaleDown + this.yLength * this.yScaleUp + 5, 0, 90 * Math.PI / 180)
                 }
                 this.group.add(this.text)
                 this.buildLine(index)
@@ -345,7 +376,7 @@
                 this.textMat = new THREE.MeshLambertMaterial({color: 0x212121})
                 let loader = new FontLoader()
                 this.font = loader.parse(fontJson)
-                this.text = this.createText("L : 0 (mm) , S : 0 (mm)", 84 + 5, this.rOut + 100, 0, 0)
+                this.text = this.createText("L : 0 (mm) , S : 0 (mm)", -this.rOut / this.scaleDown + this.yLength * this.yScaleUp + 5, this.upLength / this.scaleDown, 0, 0)
                 this.group.add(this.text)
                 this.buildLine(0)
             },
@@ -372,13 +403,12 @@
             buildShapesInit: function (rOut) {
                 let colors = []
                 let positions = []
-                let scale = 5
                 // up
-                for (let i = 0; i < 500 / scale; i++) {
-                    for (let j = 0; j < 84; j++) {
+                for (let i = 0; i < this.upLength / this.zScaleUp; i++) {
+                    for (let j = 0; j < this.yLength / this.yScaleUp; j++) {
                         // positions
-                        const x = j
-                        const y = rOut + 500 / scale - i
+                        const x = -this.rOut / this.scaleDown + j * this.yScaleUp * this.yScaleUp
+                        const y = (this.upLength - 1 - i * this.zScaleUp) / this.scaleDown
                         positions.push(x, y, 0)
                         // colors
                         const arr = this.heatmap.pickColor(1)
@@ -391,11 +421,10 @@
                     }
                 }
                 // arc
-                let step = 90 / (3000 / scale)
-                for (let i = 0; i < 3000 / scale; i++) {
-                    for (let j = 0; j < 84; j++) {
+                for (let i = 0; i < this.arcLength / this.zScaleUp; i++) {
+                    for (let j = 0; j < this.yLength / this.yScaleUp; j++) {
                         // positions
-                        let xy = this.calculateXY(rOut, rOut, rOut - j, (i * step) - 180)
+                        let xy = this.calculateXY(0, 0, rOut / this.scaleDown - j * this.yScaleUp * this.yScaleUp, 90 * i * this.zScaleUp / this.arcLength * Math.PI / 180)
                         const x = xy.x2
                         const y = xy.y2
                         positions.push(x, y, 0)
@@ -409,11 +438,10 @@
                     }
                 }
                 // down
-                for (let i = 0; i < 500 / scale; i++) {
-                    for (let j = 0; j < 84; j++) {
+                for (let i = 0; i < this.downLength / this.zScaleUp; i++) {
+                    for (let j = 0; j < this.yLength / this.yScaleUp; j++) {
                         // positions
-                        const x = rOut + i
-                        positions.push(x, j, 0)
+                        positions.push(i * this.zScaleUp / this.scaleDown, (-this.rOut / this.scaleDown + j * this.yScaleUp * this.yScaleUp), 0)
                         // colors
                         const arr = this.heatmap.pickColor(1)
 
@@ -430,7 +458,7 @@
                 geometry.setAttribute('position', new THREE.Float32BufferAttribute(this.positions, 3));
                 geometry.setAttribute('color', new THREE.Float32BufferAttribute(this.colors, 3));
                 geometry.computeBoundingSphere();
-                const material = new THREE.PointsMaterial({size: 5, vertexColors: true});
+                const material = new THREE.PointsMaterial({size: 10, vertexColors: true});
                 this.points = new THREE.Points(geometry, material);
                 this.group.add(this.points)
             },
@@ -580,8 +608,8 @@
             },
             calculateXY: function (x1, y1, r, angle) {
                 return {
-                    x2: x1 + r * Math.cos(angle * Math.PI / 180),
-                    y2: y1 + r * Math.sin(angle * Math.PI / 180)
+                    x2: x1 - r * Math.cos(angle),
+                    y2: y1 - r * Math.sin(angle)
                 }
             },
             onWindowResize: function () {
@@ -598,6 +626,7 @@
                 this.renderer.render(this.scene, this.camera)
             },
             showVerticalSlice1AtIndex: function (index) {
+                index = Math.floor(index / 5)
                 console.log(index)
                 let message = {
                     type: "generate_vertical_slice1",
@@ -618,8 +647,9 @@
                 }
             },
             showEdgeAtYIndex: function (index) {
-                console.log(index / 5 - 1)
-                this.changeText(index / 5 - 1)
+                index = index / this.zScale
+                console.log("showEdgeAtYIndex", index)
+                this.changeText(index)
             },
             createPalette: function () {
                 //颜色条的颜色分布
@@ -732,12 +762,12 @@
         text-align: center;
         width: 100%;
         z-index: 999;
+        bottom: 0;
         background: white;
     }
 
     .block {
         display: inline-block;
-        width: 540px;
     }
 
     #canvas_container {
@@ -749,7 +779,7 @@
         position: absolute;
         display: inline-block;
         left: 50%;
-        bottom: 80px;
+        top: 80px;
         transform: translateX(-50%);
         text-align: center;
     }
@@ -763,7 +793,7 @@
     }
 
     .distance_bottom .block {
-        display: block;
+        box-sizing: border-box;
         width: 100%;
     }
 
@@ -775,5 +805,39 @@
         z-index: 999;
         top: 30px;
         right: 200px;
+    }
+
+    .block {
+        background-color: #F0F4C3;
+        padding: 0 20px 10px;
+        border-top: 1px solid #ddd;
+    }
+
+    .block2 {
+        border-bottom: 1px solid #ddd;
+    }
+
+    .slider-demo-block {
+        display: flex;
+        align-items: center;
+    }
+
+    .slider-demo-block .el-slider {
+        margin-top: 0;
+        margin-left: 12px;
+    }
+
+    .slider-demo-block .demonstration {
+        font-size: 14px;
+        line-height: 44px;
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        margin-bottom: 0;
+    }
+
+    .slider-demo-block .demonstration + .el-slider {
+        flex: 0 0 90%;
     }
 </style>

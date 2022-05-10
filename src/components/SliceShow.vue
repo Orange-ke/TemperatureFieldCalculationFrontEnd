@@ -13,46 +13,36 @@
             <br>
             <div>宽边中轴线液相线离边缘距离：{{VerticalLiquidThickness}}mm / 230mm</div>
         </div>
-        <!--        <div class="bottom">-->
-        <!--            <div class="slider_container">-->
-        <!--                <div class="block">-->
-        <!--                    <span class="demonstration">切片生成进度</span>-->
-        <!--                    <el-slider-->
-        <!--                            :disabled="true"-->
-        <!--                            :max="max"-->
-        <!--                            :marks="marks"-->
-        <!--                            v-model="sliceLength"-->
-        <!--                            :step="1">-->
-        <!--                    </el-slider>-->
-        <!--                </div>-->
-        <!--                <div :style="styleStart" class="mark">{{start === 1 ? "" : start}}</div>-->
-        <!--                <div :style="styleEnd" class="mark">{{end === 4000 ? "" : end}}</div>-->
-        <!--            </div>-->
-
-        <!--            <el-input-number v-model="sliceIndex" :step="1" :max="sliceLength" :min="1"></el-input-number>-->
-        <!--            <el-button style="margin-left: 10px;" round type="primary" @click="showSliceDetail(sliceIndex - 1)">查看切片</el-button>-->
-        <!--        </div>-->
+        <div class="operation">
+            <el-input-number size="normal" v-model="sliceIndex" :step="1" :max="max" :min="1"></el-input-number>
+            <el-button size="normal" style="margin-left: 10px;" round type="primary"
+                       @click="showSliceDetail(sliceIndex)">查看距离液面距离对应的横截面
+            </el-button>
+        </div>
+        <div class="temp font_glow">
+            当前点温度：{{ pointTemp.toFixed(4) }} ℃
+        </div>
         <div class="bottom">
             <div class="slider_container">
-                <div class="block">
-                    <span class="demonstration">分区信息</span>
+                <div class="block block1 slider-demo-block">
+                    <span class="demonstration">设备分区信息</span>
                     <el-slider
                             :max="max"
-                            :marks="marks"
+                            :marks="casterMarks"
+                            v-model="sliceIndex"
+                            :step="1">
+                    </el-slider>
+                </div>
+                <div class="block block2 slider-demo-block">
+                    <span class="demonstration">冷却区分区信息</span>
+                    <el-slider
+                            :max="max"
+                            :marks="coolingMarks"
                             v-model="sliceIndex"
                             :step="1">
                     </el-slider>
                 </div>
             </div>
-            <div class="operation">
-                <el-input-number size="mini" v-model="sliceIndex" :step="1" :max="max" :min="0"></el-input-number>
-                <el-button size="mini" style="margin-left: 10px;" round type="primary"
-                           @click="showSliceDetail(sliceIndex)">查看距离液面距离对应的横截面
-                </el-button>
-            </div>
-        </div>
-        <div class="temp font_glow">
-            当前点温度：{{ pointTemp.toFixed(4) }} ℃
         </div>
     </div>
 </template>
@@ -66,8 +56,10 @@
         props: ['conn', 'config'],
         data() {
             return {
-                sliceLength: 100,
-                marks: {
+                casterMarks: {
+                    0: '',
+                },
+                coolingMarks: {
                     0: '',
                 },
                 max: 0,
@@ -139,11 +131,11 @@
                 this.pointer = new THREE.Vector2()
 
                 window.addEventListener('resize', this.onWindowResize, false)
-                this.renderer.domElement.addEventListener('pointermove', this.onPointerMove)
+                this.renderer.domElement.addEventListener('pointermove', this.onPointerMove);
             },
             onPointerMove: function (event) {
-                this.pointer.x = (event.clientX / (window.innerWidth )) * 2 - 1;
-                this.pointer.y = -(event.clientY / (window.innerHeight)) * 2 + 1;
+                this.pointer.x = ((event.clientX - 24) / this.width) * 2 - 1;
+                this.pointer.y = -((event.clientY - 10) / this.height) * 2 + 1;
             },
             buildShapesInit: function () {
                 let colors = []
@@ -151,11 +143,11 @@
                 let temps = []
                 let m = this.sliceHeight
                 let n = this.sliceWidth
-                let hh = m / 2
-                let hw = n / 2
+                let hh = m * this.scaleFactor / 2
+                let hw = n * this.scaleFactor / 2
                 for (let i = 0; i < m; i++) {
                     for (let j = 0; j < n; j++) {
-                        positions.push(j - hw, i - hh, 0)
+                        positions.push(j * this.scaleFactor - hw, i * this.scaleFactor - hh, 0)
                         const arr = this.heatmap.pickColor(1)
                         const vx = arr[0] / 255
                         const vy = arr[1] / 255
@@ -193,7 +185,6 @@
                 let colors = []
                 let positions = []
                 let temps = []
-
                 for (let i = 0; i < m; i++) {
                     for (let j = 0; j < n; j++) {
                         positions.push(j * this.scaleFactor - hw, i * this.scaleFactor - hh, 0)
@@ -300,7 +291,7 @@
 
                 this.raycaster.setFromCamera(this.pointer, this.camera);
 
-                this.intersects = this.raycaster.intersectObject(this.points);
+                this.intersects = this.raycaster.intersectObject(this.points, true);
 
                 if (this.intersects.length > 0) {
                     if (this.INTERSECTED !== this.intersects[0].index) {
@@ -319,7 +310,7 @@
                 //     type: "start_push_slice_detail",
                 //     content: String(index)
                 // }
-                index = index / 10 - 1
+                index = Math.floor(index / 10) - 1
                 let message = {
                     type: "generate_slice",
                     content: String(index)
@@ -334,25 +325,31 @@
             this.container = document.getElementById("slice_container")
             this.width = this.container.clientWidth
             this.height = this.container.clientHeight
-            console.log(this.width, this.height)
-            console.log(this.config)
-            this.sliceWidth = this.config.cross_profile.length
-            this.sliceHeight = this.config.cross_profile.width
+
+            this.sliceWidth = this.config.coordinate.length / this.config.coordinate.x_scale
+            this.sliceHeight = this.config.coordinate.width / this.config.coordinate.y_scale
+            console.log(this.sliceWidth, this.sliceHeight, this.config.coordinate.length, this.config.coordinate.width, this.config.coordinate.x_scale, this.config.coordinate.y_scale)
             this.init()
             this.animate()
 
             this.max = this.config.coordinate.z_length
-            // md
-            this.marks[0] = 'md'
+            // 设备分区标记
+            this.casterMarks[0] = 'md'
+            this.coolingMarks[0] = 'md'
             let index = 0
             let roller = {}
+            for (let i = 1; i < this.config.segments.length; i++) {
+                index = this.config.segments[i].start - 1
+                roller = this.config.secondary_cooling_zone[index]
+                this.casterMarks[roller.distance] = this.config.segments[i].seg
+            }
+
+            // 冷却区分区标记
             for (let i = 0; i < this.config.cooling_zone.length; i++) {
                 index = this.config.cooling_zone[i].start - 1
                 roller = this.config.secondary_cooling_zone[index]
-                this.marks[roller.distance] = '' + (i + 1)
+                this.coolingMarks[roller.distance] = '' + (i + 1)
             }
-
-            console.log(this.marks)
 
             let self = this
             // this.$root.$on("new_slice_detail", (data) => {
@@ -367,7 +364,7 @@
             // })
 
             this.$root.$on("slice_generated", (data) => {
-                console.log(data, "slice_data")
+                console.log(data)
                 self.buildShapes(data.slice, self.sliceWidth, self.sliceHeight)
                 self.HorizontalSolidThickness = data.horizontal_solid_thickness
                 self.HorizontalLiquidThickness = data.horizontal_liquid_thickness
@@ -383,7 +380,7 @@
 <style scoped>
     #slice_container {
         width: 100%;
-        height: calc(100vh - 40px);
+        height: calc(100vh - 30px);
         border: 1px solid #ddd;
         position: relative;
     }
@@ -399,7 +396,7 @@
         left: 50%;
         transform: translateX(-50%);
         z-index: 999;
-        bottom: 120px;
+        bottom: 250px;
         color: #212121;
         font-size: large;
         font-weight: bold;
@@ -435,16 +432,8 @@
         text-align: center;
         width: 100%;
         z-index: 999;
-        bottom: 0;
+        top: 820px;
         background: white;
-        height: 80px;
-    }
-
-    .operation {
-        position: absolute;
-        left: 50%;
-        transform: translate(-50%, 50%);
-        bottom: 0;
     }
 
     .temp {
@@ -463,5 +452,43 @@
 
     .font_glow {
         text-shadow: 0 0 10px #fff
+    }
+
+    .block {
+        background-color: #F0F4C3;
+        padding: 0 20px 10px;
+        border-top: 1px solid #ddd;
+    }
+
+    .block2 {
+        border-bottom: 1px solid #ddd;
+    }
+
+    .slider-demo-block {
+        display: flex;
+        align-items: center;
+    }
+    .slider-demo-block .el-slider {
+        margin-top: 0;
+        margin-left: 12px;
+    }
+    .slider-demo-block .demonstration {
+        font-size: 14px;
+        line-height: 44px;
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        margin-bottom: 0;
+    }
+    .slider-demo-block .demonstration + .el-slider {
+        flex: 0 0 93%;
+    }
+
+    .operation {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: 200px;
     }
 </style>

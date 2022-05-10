@@ -15,22 +15,27 @@
         </el-container>
 
         <el-dialog :visible.sync="formVisible" center top="5vh">
-            <i class="dialog_close el-icon-circle-close" @click="closeFormDialog"></i>
+            <el-button type="danger" @click="closeFormDialog" size="normal">关闭</el-button>
             <Form></Form>
         </el-dialog>
 
         <el-dialog :destroy-on-close="true" :visible.sync="sliceDialogVisible" width="100%" center top="0vh"
                    :fullscreen=true>
-            <span class="dialog_title">温度场切片详情</span>
-            <i class="dialog_close el-icon-circle-close" @click="closeSliceDialog"></i>
+            <div class="dialog_title">
+                <span>温度场横切片分布详情</span>
+                <br>
+                <br>
+                <el-button @click="closeSliceDialog" type="danger">关闭页面</el-button>
+            </div>
             <SliceShow :conn="conn" :config="casterCfg"></SliceShow>
         </el-dialog>
 
         <el-dialog :destroy-on-close="true" :visible.sync="curvesDialogVisible" width="100%" center top="0vh"
                    :fullscreen=true>
-            <span class="dialog_title">温度场纵切面温度分布详情</span>
-            <i class="dialog_close el-icon-circle-close" @click="closeCurvesDialog"></i>
-            <Curves :conn="conn"></Curves>
+            <div class="dialog_title">
+                <el-button @click="closeCurvesDialog" type="danger">关闭页面</el-button>
+            </div>
+            <Curves :conn="conn" :config="casterCfg"></Curves>
         </el-dialog>
     </div>
 </template>
@@ -105,6 +110,7 @@
             this.$root.$on("show_detail_curves", (args) => {
                 this.curvesDialogVisible = args.show
                 this.conn = args.conn
+                this.casterCfg = args.config
             })
         }
     }
@@ -212,6 +218,7 @@
     }
 
     .dialog_title {
+        text-align: center;
         display: block;
         position: absolute;
         color: #212121;

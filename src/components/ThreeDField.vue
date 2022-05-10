@@ -234,7 +234,6 @@
 
                 let roller = {}
                 let position = 0, xIn = 0, yIn = 0, xOut = 0, yOut = 0, angle = 0
-                let arcLength = coordinate.center_end_distance - coordinate.center_start_distance
                 for (let i = 0; i < rollers.length; i += 1) {
                     roller = rollers[i]
                     position = (roller.distance + coordinate.level_height) / this.zScale
@@ -249,7 +248,7 @@
                         xIn = -rIn + roller.inner_diameter / this.zScale / 2
                         yIn = roller.inner_y / this.zScale
                     } else if (position >= this.centerStart && position <= this.centerEnd) {
-                        angle = 90 * (roller.distance - coordinate.center_start_distance) / arcLength * Math.PI / 180
+                        angle = 90 * (roller.distance - coordinate.center_start_distance) / this.arcLength * Math.PI / 180
                         let xy1 = this.calculateXY(0, 0, rOut + roller.outer_diameter / this.zScale / 2, angle)
                         xOut = xy1.x2
                         yOut = xy1.y2
@@ -291,7 +290,6 @@
                 let zone = {}
                 let x, y, angle = 0
                 let position, index = 0
-                let arcLength = coordinate.center_end_distance - coordinate.center_start_distance
                 // 构建冷却区标记
                 for (let i = 0; i < coolingZones.length; i++) {
                     zone = coolingZones[i]
@@ -302,7 +300,7 @@
                         y = rollers[index].inner_y / this.zScale
                         angle = 0
                     } else if (position >= this.centerStart && position <= this.centerEnd) {
-                        angle = 90 * (rollers[index].distance - coordinate.center_start_distance) / arcLength * Math.PI / 180
+                        angle = 90 * (rollers[index].distance - coordinate.center_start_distance) / this.arcLength * Math.PI / 180
                         let xy = this.calculateXY(0, 0, rIn - offset, angle)
                         x = xy.x2
                         y = xy.y2
@@ -325,7 +323,7 @@
                         y = rollers[index].inner_y / this.zScale
                         angle = 0
                     } else if (position >= this.centerStart && position <= this.centerEnd) {
-                        angle = 90 * (rollers[index].distance - coordinate.center_start_distance) / arcLength * Math.PI / 180
+                        angle = 90 * (rollers[index].distance - coordinate.center_start_distance) / this.arcLength * Math.PI / 180
                         let xy = this.calculateXY(0, 0, rIn - offset1, angle)
                         x = xy.x2
                         y = xy.y2
@@ -391,13 +389,12 @@
                 let position, angle = 0
                 let x1, y1, x2, y2
                 let points = []
-                let arcLength = coordinate.center_end_distance - coordinate.center_start_distance
                 position = (rollers[start].distance + coordinate.level_height) / this.zScale
                 if (position <= this.centerStart) {
                     x1 = -rIn + offset
                     y1 = rollers[start].inner_y / this.zScale
                 } else if (position >= this.centerStart && position <= this.centerEnd) {
-                    angle = 90 * (rollers[start].distance - coordinate.center_start_distance) / arcLength * Math.PI / 180
+                    angle = 90 * (rollers[start].distance - coordinate.center_start_distance) / this.arcLength * Math.PI / 180
                     let xy1 = this.calculateXY(0, 0, rIn - offset, angle)
                     x1 = xy1.x2
                     y1 = xy1.y2
@@ -410,7 +407,7 @@
                     x2 = -rIn + offset
                     y2 = rollers[end].inner_y / this.zScale
                 } else if (position >= this.centerStart && position <= this.centerEnd) {
-                    angle = 90 * (rollers[end].distance - coordinate.center_start_distance) / arcLength * Math.PI / 180
+                    angle = 90 * (rollers[end].distance - coordinate.center_start_distance) / this.arcLength * Math.PI / 180
                     let xy1 = this.calculateXY(0, 0, rIn - offset, angle)
                     x2 = xy1.x2
                     y2 = xy1.y2
@@ -426,14 +423,13 @@
                 let x1, y1, x2, y2
                 let points = []
                 position = (rollers[index].distance + coordinate.level_height) / this.zScale
-                let arcLength = coordinate.center_end_distance - coordinate.center_start_distance
                 if (position <= this.centerStart) {
                     x1 = -rIn
                     y1 = rollers[index].inner_y / this.zScale
                     x2 = x1 + offset
                     y2 = y1
                 } else if (position >= this.centerStart && position <= this.centerEnd) {
-                    angle = 90 * (rollers[index].distance - coordinate.center_start_distance) / arcLength * Math.PI / 180
+                    angle = 90 * (rollers[index].distance - coordinate.center_start_distance) / this.arcLength * Math.PI / 180
                     let xy1 = this.calculateXY(0, 0, rIn, angle)
                     x1 = xy1.x2
                     y1 = xy1.y2
@@ -462,7 +458,6 @@
                 // let xStep = data.x_scale
                 // let yStep = data.y_scale
                 let zStep = data.z_scale
-                let arcLength = this.arcEnd - this.arcStart
                 if (data.end - data.start >= zStep) {
                     // down.down特殊处理，因为总是需要底部的切片
                     // down
@@ -474,7 +469,7 @@
                                 positions.push(-rIn - i, this.centerStart - data.end - this.levelHeight, z)
                             } else if (data.end <= this.centerEnd) {
                                 let r = rOut - i
-                                let xy = this.calculateXY(0, 0, r, 90 * (data.end - this.centerStart) / arcLength * Math.PI / 180)
+                                let xy = this.calculateXY(0, 0, r, 90 * (data.end - this.centerStart) / this.arcLength * Math.PI / 180)
                                 const x = xy.x2
                                 const y = xy.y2
                                 let z = j - halfLength
@@ -502,7 +497,7 @@
                                 positions.push(-rIn - i, this.centerStart - data.start - this.levelHeight, z)
                             } else if (data.start <= this.centerEnd) {
                                 let r = rOut - i
-                                let xy = this.calculateXY(0, 0, r, 90 * (data.start - this.centerStart) / arcLength * Math.PI / 180)
+                                let xy = this.calculateXY(0, 0, r, 90 * (data.start - this.centerStart) / this.arcLength * Math.PI / 180)
                                 const x = xy.x2
                                 const y = xy.y2
                                 let z = j - halfLength
@@ -974,9 +969,13 @@
             this.$root.$on("caster_info", (data) => {
                 console.log(data)
                 self.originMd = data.md.length
-                self.originXLength = data.cross_profile.length
-                self.originYLength = data.cross_profile.width
+                self.originXLength = data.coordinate.length
+                self.originYLength = data.coordinate.width
                 self.levelHeight = data.coordinate.level_height / self.zScale
+
+                self.zScale = data.coordinate.z_scale
+                self.xScale = data.coordinate.x_scale
+                self.yScale = data.coordinate.y_scale
 
                 self.md = self.originMd / self.zScale
                 self.xLength = self.originXLength / self.xScale
@@ -985,7 +984,7 @@
                 self.rOut = data.coordinate.r / self.zScale
                 self.rIn = self.rOut - self.yLength
 
-                self.arcLength = (self.rOut - self.yLength / 2) * 2 * Math.PI / 4
+                self.arcLength = data.coordinate.center_end_distance - data.coordinate.center_start_distance
 
                 // 获取近似圆弧的起始位置距离液面的距离
                 self.centerStart = (data.coordinate.center_start_distance + data.coordinate.level_height) / self.zScale

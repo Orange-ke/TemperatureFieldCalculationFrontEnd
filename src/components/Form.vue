@@ -455,7 +455,8 @@
                 this.$root.$emit("show_detail_slice", {show: true, config: config, conn: this.connection})
             },
             showDetailCurves: function () {
-                this.$root.$emit("show_detail_curves", {show: true, conn: this.connection})
+                let config = this.casterCfg
+                this.$root.$emit("show_detail_curves", {show: true, config: config, conn: this.connection})
             },
             generateData: function () {
                 let message = {
