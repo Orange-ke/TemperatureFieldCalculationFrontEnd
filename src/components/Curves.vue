@@ -3,9 +3,9 @@
         <el-tabs type="border-card">
             <el-tab-pane label="纵切面温度分布云图">
                 <div class="info">
-                    <div>固相线交汇处：{{solidJoin * 10}} mm</div>
+                    <div v-if="solidJoin >= 0">固相线交汇处：{{solidJoin * 10}} mm</div>
                     <br>
-                    <div>液相线交汇处：{{liquidJoin * 10}} mm</div>
+                    <div v-if="liquidJoin >= 0">液相线交汇处：{{liquidJoin * 10}} mm</div>
                 </div>
                 <div id="canvas_container" style="width: 100%; height: 820px;"></div>
                 <div class="slice_bottom">
@@ -22,7 +22,7 @@
                     <div class="operation">
                         <el-input-number size="mini" v-model="index2" :step="1" :max="max" :min="1"></el-input-number>
                         <el-button size="mini" style="margin-left: 10px;" round type="primary"
-                                   @click="showVerticalSlice2AtIndex(index2 - 1)">查看对应距离纵切片数据
+                                   @click="showVerticalSlice2AtIndex(index2-1)">查看对应距离纵切片数据
                         </el-button>
                     </div>
                 </div>
@@ -33,6 +33,7 @@
                             <el-slider
                                     @change="showEdgeAtYIndex(yIndex)"
                                     :max="maxZLength"
+                                    :min="1"
                                     :marks="casterMarks"
                                     v-model="yIndex"
                                     :step="1">
@@ -45,6 +46,7 @@
                                     :max="maxZLength"
                                     :marks="coolingMarks"
                                     v-model="yIndex"
+                                    :min="1"
                                     :step="1">
                             </el-slider>
                         </div>
@@ -68,7 +70,7 @@
                     <div class="operation">
                         <el-input-number size="normal" v-model="index1" :step="1" :max="max" :min="1"></el-input-number>
                         <el-button size="normal" style="margin-left: 10px;" round type="primary"
-                                   @click="showVerticalSlice1AtIndex(index1)">查看对应距离纵切片温度曲线数据
+                                   @click="showVerticalSlice1AtIndex(index1-1)">查看对应距离纵切片温度曲线数据
                         </el-button>
                     </div>
                 </div>
@@ -182,7 +184,8 @@
                 yScale: 5,
                 zScaleUp: 5,
                 yScaleUp: 2,
-                scaleDown: 1.5,
+                scaleDown: 1,
+                zIndexSoFar: 0,
                 rOut: 0,
                 rIn: 0,
 
@@ -210,10 +213,11 @@
                 solidJoin: 0,
                 liquidJoin: 0,
 
+                offset: 10,
                 textMat: undefined,
                 font: undefined,
                 fontHeight: 2,
-                fontSize: 15,
+                fontSize: 18,
                 curveSegments: 10,
                 bevelThickness: 0.1,
                 bevelSize: 0.3,
@@ -280,20 +284,21 @@
 
                 this.$root.$on("vertical_slice2_generated", (data) => {
                     console.log(data)
+                    this.zIndexSoFar = data.length
                     this.liquidSolidPositions.liquid = data.liquid
                     this.liquidSolidPositions.solid = data.solid
                     this.liquidSolidPositions.liquidJoin = data.liquid_join
                     this.liquidSolidPositions.solidJoin = data.solid_join
 
-                    this.solidJoin = data.solid_join.join_index
-                    this.liquidJoin = data.liquid_join.join_index
+                    this.solidJoin = data.solid_join.is_join ? data.solid_join.join_index : -1
+                    this.liquidJoin = data.liquid_join.is_join ? data.liquid_join.join_index : -1
 
                     this.buildShapes(data.vertical_slice)
 
-                    this.buildCurve(this.rOut, this.rIn, this.liquidSolidPositions.liquid, 400, this.curvePointsLiquid.geometry, this.liquidColors, this.liquidPositions)
-                    this.buildCurve(this.rOut, this.rIn, this.liquidSolidPositions.solid, 1, this.curvePointsSolid.geometry, this.solidColors, this.solidPositions)
+                    this.buildCurve(this.rOut, this.rIn, this.liquidSolidPositions.liquid, 400, this.curvePointsLiquid.geometry, this.liquidColors, this.liquidPositions, this.liquidJoin)
+                    this.buildCurve(this.rOut, this.rIn, this.liquidSolidPositions.solid, 1, this.curvePointsSolid.geometry, this.solidColors, this.solidPositions, this.solidJoin)
 
-                    this.changeText(this.yIndex / 5 - 1)
+                    this.showEdgeAtYIndex(this.yIndex)
                 })
             })
 
@@ -306,12 +311,12 @@
                 }
                 this.scene = new THREE.Scene()
                 this.camera = new THREE.PerspectiveCamera(50, this.width / this.height, 1, 10000)
-                this.camera.position.set(0, 0, 950);
+                this.camera.position.set(0, 0, 1500);
                 this.scene.add(new THREE.AmbientLight(0xffffff))
                 this.scene.background = new THREE.Color(0xffffff)
 
                 this.group = new THREE.Group()
-                this.group.position.set(-150, 190, 0)
+                this.group.position.set(-150, 220, 0)
                 this.scene.add(this.group)
 
                 this.renderer = new THREE.WebGLRenderer()
@@ -331,15 +336,15 @@
                 let points = []
                 if (index < this.upLength) {
                     points.push(new THREE.Vector3(-this.rOut / this.scaleDown + this.yLength * this.yScaleUp / 2, (this.upLength - index) / this.scaleDown, 0))
-                    points.push(new THREE.Vector3(-this.rOut / this.scaleDown + this.yLength * this.yScaleUp + 5, (this.upLength - index) / this.scaleDown, 0))
+                    points.push(new THREE.Vector3(-this.rOut / this.scaleDown + this.yLength * this.yScaleUp + this.offset, (this.upLength - index) / this.scaleDown, 0))
                 } else if (index < this.upLength + this.arcLength) {
                     let xy1 = this.calculateXY(0, 0, this.rOut / this.scaleDown - this.yLength * this.yScaleUp / 2, 90 * (index - this.upLength) / this.arcLength * Math.PI / 180)
-                    let xy2 = this.calculateXY(0, 0, this.rOut / this.scaleDown - (this.yLength * this.yScaleUp + 5), 90 * (index - this.upLength) / this.arcLength * Math.PI / 180)
+                    let xy2 = this.calculateXY(0, 0, this.rOut / this.scaleDown - (this.yLength * this.yScaleUp + this.offset), 90 * (index - this.upLength) / this.arcLength * Math.PI / 180)
                     points.push(new THREE.Vector3(xy1.x2, xy1.y2, 0))
                     points.push(new THREE.Vector3(xy2.x2, xy2.y2, 0))
                 } else {
                     points.push(new THREE.Vector3((index - (this.upLength + this.arcLength)) / this.scaleDown, -this.rOut / this.scaleDown + this.yLength * this.yScaleUp / 2, 0))
-                    points.push(new THREE.Vector3((index - (this.upLength + this.arcLength)) / this.scaleDown, -this.rOut / this.scaleDown + this.yLength * this.yScaleUp + 5, 0))
+                    points.push(new THREE.Vector3((index - (this.upLength + this.arcLength)) / this.scaleDown, -this.rOut / this.scaleDown + this.yLength * this.yScaleUp + this.offset, 0))
                 }
                 this.line = this.setLine(points, parameters)
                 this.group.add(this.line)
@@ -350,24 +355,23 @@
                 return new THREE.Line(geometry, material)
             },
             changeText: function (index) {
-                // let liquid = this.liquidSolidPositions.liquid
-                // let solid = this.liquidSolidPositions.solid
-                // if (liquid.length === 0 || solid.length === 0) {
-                //     return
-                // }
+                let liquid = this.liquidSolidPositions.liquid
+                let solid = this.liquidSolidPositions.solid
+                if (liquid.length === 0 || solid.length === 0) {
+                    return
+                }
                 this.group.remove(this.text)
-                // let liquidValue = liquid[index] * 5
-                let liquidValue = 5
-                // let solidValue = solid[index] * 5
-                let solidValue = 5
+                console.log(liquid, solid)
+                let liquidValue = liquid[index] * 5
+                let solidValue = solid[index] * 5
                 let text = "L : " + liquidValue + " (mm) , S : " + solidValue + " (mm)"
                 if (index < this.upLength) {
-                    this.text = this.createText(text, -this.rOut / this.scaleDown + this.yLength * this.yScaleUp + 5, (this.upLength - index) / this.scaleDown, 0, 0)
+                    this.text = this.createText(text, -this.rOut / this.scaleDown + this.yLength * this.yScaleUp + this.offset, (this.upLength - index) / this.scaleDown, 0, 0)
                 } else if (index < this.upLength + this.arcLength) {
-                    let xy = this.calculateXY(0, 0, this.rOut / this.scaleDown - (this.yLength * this.yScaleUp + 5), 90 * (index - this.upLength) / this.arcLength * Math.PI / 180)
+                    let xy = this.calculateXY(0, 0, this.rOut / this.scaleDown - (this.yLength * this.yScaleUp + this.offset), 90 * (index - this.upLength) / this.arcLength * Math.PI / 180)
                     this.text = this.createText(text, xy.x2, xy.y2, 0, 90 * (index - this.upLength) / this.arcLength * Math.PI / 180)
                 } else {
-                    this.text = this.createText(text, (index - (this.upLength + this.arcLength)) / this.scaleDown, -this.rOut / this.scaleDown + this.yLength * this.yScaleUp + 5, 0, 90 * Math.PI / 180)
+                    this.text = this.createText(text, (index - (this.upLength + this.arcLength)) / this.scaleDown, -this.rOut / this.scaleDown + this.yLength * this.yScaleUp + this.offset, 0, 90 * Math.PI / 180)
                 }
                 this.group.add(this.text)
                 this.buildLine(index)
@@ -376,7 +380,7 @@
                 this.textMat = new THREE.MeshLambertMaterial({color: 0x212121})
                 let loader = new FontLoader()
                 this.font = loader.parse(fontJson)
-                this.text = this.createText("L : 0 (mm) , S : 0 (mm)", -this.rOut / this.scaleDown + this.yLength * this.yScaleUp + 5, this.upLength / this.scaleDown, 0, 0)
+                this.text = this.createText("L : 0 (mm) , S : 0 (mm)", -this.rOut / this.scaleDown + this.yLength * this.yScaleUp + this.offset, this.upLength / this.scaleDown, 0, 0)
                 this.group.add(this.text)
                 this.buildLine(0)
             },
@@ -405,9 +409,9 @@
                 let positions = []
                 // up
                 for (let i = 0; i < this.upLength / this.zScaleUp; i++) {
-                    for (let j = 0; j < this.yLength / this.yScaleUp; j++) {
+                    for (let j = 0; j < this.yLength; j++) {
                         // positions
-                        const x = -this.rOut / this.scaleDown + j * this.yScaleUp * this.yScaleUp
+                        const x = -this.rOut / this.scaleDown + j * this.yScaleUp
                         const y = (this.upLength - 1 - i * this.zScaleUp) / this.scaleDown
                         positions.push(x, y, 0)
                         // colors
@@ -422,9 +426,9 @@
                 }
                 // arc
                 for (let i = 0; i < this.arcLength / this.zScaleUp; i++) {
-                    for (let j = 0; j < this.yLength / this.yScaleUp; j++) {
+                    for (let j = 0; j < this.yLength; j++) {
                         // positions
-                        let xy = this.calculateXY(0, 0, rOut / this.scaleDown - j * this.yScaleUp * this.yScaleUp, 90 * i * this.zScaleUp / this.arcLength * Math.PI / 180)
+                        let xy = this.calculateXY(0, 0, rOut / this.scaleDown - j * this.yScaleUp, 90 * i * this.zScaleUp / this.arcLength * Math.PI / 180)
                         const x = xy.x2
                         const y = xy.y2
                         positions.push(x, y, 0)
@@ -439,9 +443,9 @@
                 }
                 // down
                 for (let i = 0; i < this.downLength / this.zScaleUp; i++) {
-                    for (let j = 0; j < this.yLength / this.yScaleUp; j++) {
+                    for (let j = 0; j < this.yLength; j++) {
                         // positions
-                        positions.push(i * this.zScaleUp / this.scaleDown, (-this.rOut / this.scaleDown + j * this.yScaleUp * this.yScaleUp), 0)
+                        positions.push(i * this.zScaleUp / this.scaleDown, (-this.rOut / this.scaleDown + j * this.yScaleUp), 0)
                         // colors
                         const arr = this.heatmap.pickColor(1)
 
@@ -458,16 +462,21 @@
                 geometry.setAttribute('position', new THREE.Float32BufferAttribute(this.positions, 3));
                 geometry.setAttribute('color', new THREE.Float32BufferAttribute(this.colors, 3));
                 geometry.computeBoundingSphere();
-                const material = new THREE.PointsMaterial({size: 10, vertexColors: true});
+                const material = new THREE.PointsMaterial({size: 10.8, vertexColors: true});
                 this.points = new THREE.Points(geometry, material);
                 this.group.add(this.points)
             },
             buildShapes: function (data) {
+                console.log(data)
                 let colors = []
-                let scale = 5
+                let n = data.length
+                let m = data[0].length
+                console.log(n, m)
+                let start = 0
+                let end = Math.min(this.upLength / this.zScaleUp, n)
                 // up
-                for (let i = 0; i < 500 / scale; i++) {
-                    for (let j = 0; j < 84; j++) {
+                for (let i = start; i < end; i++) {
+                    for (let j = 0; j < m; j++) {
                         // colors
                         const arr = this.heatmap.pickColor(Math.floor(data[i][j]) % this.originTemperature)
 
@@ -479,28 +488,36 @@
                     }
                 }
                 // arc
-                for (let i = 0; i < 3000 / scale; i++) {
-                    for (let j = 0; j < 84; j++) {
-                        // colors
-                        const arr = this.heatmap.pickColor(Math.floor(data[i + 500 / scale][j]) % this.originTemperature)
-                        const vx = arr[0] / 255
-                        const vy = arr[1] / 255
-                        const vz = arr[2] / 255
+                if (n * this.zScaleUp > this.upLength) {
+                    start = this.upLength / this.zScaleUp
+                    end = Math.min((this.upLength + this.arcLength) / this.zScaleUp, n)
+                    for (let i = start; i < end; i++) {
+                        for (let j = 0; j < m; j++) {
+                            // colors
+                            const arr = this.heatmap.pickColor(Math.floor(data[i][j]) % this.originTemperature)
+                            const vx = arr[0] / 255
+                            const vy = arr[1] / 255
+                            const vz = arr[2] / 255
 
-                        colors.push(vx, vy, vz)
+                            colors.push(vx, vy, vz)
+                        }
                     }
                 }
                 // down
-                for (let i = 0; i < 500 / scale; i++) {
-                    for (let j = 0; j < 84; j++) {
-                        // colors
-                        const arr = this.heatmap.pickColor(Math.floor(data[i + 3500 / scale][j]) % this.originTemperature)
+                if (n * this.zScaleUp > this.upLength + this.arcLength) {
+                    start = (this.upLength + this.arcLength) / this.zScaleUp
+                    end = n
+                    for (let i = start; i < end; i++) {
+                        for (let j = 0; j < m; j++) {
+                            // colors
+                            const arr = this.heatmap.pickColor(Math.floor(data[i][j]) % this.originTemperature)
 
-                        const vx = arr[0] / 255
-                        const vy = arr[1] / 255
-                        const vz = arr[2] / 255
+                            const vx = arr[0] / 255
+                            const vy = arr[1] / 255
+                            const vz = arr[2] / 255
 
-                        colors.push(vx, vy, vz)
+                            colors.push(vx, vy, vz)
+                        }
                     }
                 }
                 this.colors = colors
@@ -513,7 +530,7 @@
                 geometry1.setAttribute('position', new THREE.Float32BufferAttribute(colors, 3));
                 geometry1.setAttribute('color', new THREE.Float32BufferAttribute(positions, 3));
                 geometry1.computeBoundingSphere();
-                const material = new THREE.PointsMaterial({size: 3, vertexColors: true});
+                const material = new THREE.PointsMaterial({size: 7.5, vertexColors: true});
                 this.curvePointsLiquid = new THREE.Points(geometry1, material);
                 this.group.add(this.curvePointsLiquid)
 
@@ -525,25 +542,24 @@
                 this.curvePointsSolid = new THREE.Points(geometry2, material);
                 this.group.add(this.curvePointsSolid)
             },
-            buildCurve: function (rOut, rIn, data, colorIndex, geometry, colors1, positions1) {
+            buildCurve: function (rOut, rIn, data, colorIndex, geometry, colors1, positions1, index) {
+                console.log(data)
                 let positions = []
                 let colors = []
-                let scale = 5
-                // let joined = false
+                let joined = false
                 // up
-                for (let i = 0; i < 500 / scale; i++) {
-                    // if (data[i] === 42) {
-                    //     joined = true
-                    //     break
-                    // }
-                    if (data[i] === 0) {
+                let start = 0
+                let end = Math.min(this.upLength, data.length)
+                for (let i = start; i < end / this.zScaleUp; i++) {
+                    if (data[i * this.zScaleUp] === 0) {
                         continue
                     }
                     // positions
-                    const x = data[i]
-                    const y = rOut + 500 / scale - i
-                    positions.push(x, y, 3)
-                    positions.push(84 - x, y, 3)
+                    const x1 = -this.rOut / this.scaleDown + data[i * this.zScaleUp] * this.yScaleUp
+                    const x2 = -this.rOut / this.scaleDown + this.yLength * this.yScaleUp - data[i * this.zScaleUp] * this.yScaleUp
+                    const y = (this.upLength - 1 - i * this.zScaleUp) / this.scaleDown
+                    positions.push(x1, y, 3)
+                    positions.push(x2, y, 3)
                     // colors
                     const arr = this.heatmap.pickColor(colorIndex)
 
@@ -553,53 +569,66 @@
 
                     colors.push(vx, vy, vz)
                     colors.push(vx, vy, vz)
+
+                    if (index !== -1 && i * this.zScaleUp > index) {
+                        joined = true
+                        break
+                    }
                 }
                 // arc
-                let step = 90 / (3000 / scale)
-                for (let i = 0; i < 3000 / scale; i++) {
-                    // if (data[i + 500 / scale] === 42 || joined) {
-                    //     break
-                    // }
-                    if (data[i + 500 / scale] === 0) {
-                        continue
-                    }
-                    // positions
-                    let xy = this.calculateXY(rOut, rOut, rOut - data[i + 500 / scale], (i * step) - 180)
-                    const x = xy.x2
-                    const y = xy.y2
-                    positions.push(x, y, 3)
-                    let xy2 = this.calculateXY(rOut, rOut, rIn + data[i + 500 / scale], (i * step) - 180)
-                    positions.push(xy2.x2, xy2.y2, 3)
-                    // colors
-                    const arr = this.heatmap.pickColor(colorIndex)
-                    const vx = arr[0] / 255
-                    const vy = arr[1] / 255
-                    const vz = arr[2] / 255
+                if (data.length > this.upLength) {
+                    let start = this.upLength
+                    let end = Math.min(this.upLength + this.arcLength, data.length)
+                    for (let i = start / this.zScaleUp; i < end / this.zScaleUp; i++) {
+                        if (data[i * this.zScaleUp] === 0) {
+                            continue
+                        }
+                        // positions
+                        let xy = this.calculateXY(0, 0, rOut / this.scaleDown - data[i * this.zScaleUp] * this.yScaleUp, 90 * i * this.zScaleUp / this.arcLength * Math.PI / 180)
+                        positions.push(xy.x2, xy.y2, 3)
+                        let xy2 = this.calculateXY(0, 0, rOut / this.scaleDown - this.yLength * this.yScaleUp + data[i * this.zScaleUp] * this.yScaleUp, 90 * i * this.zScaleUp / this.arcLength * Math.PI / 180)
+                        positions.push(xy2.x2, xy2.y2, 3)
+                        // colors
+                        const arr = this.heatmap.pickColor(colorIndex)
+                        const vx = arr[0] / 255
+                        const vy = arr[1] / 255
+                        const vz = arr[2] / 255
 
-                    colors.push(vx, vy, vz)
-                    colors.push(vx, vy, vz)
+                        colors.push(vx, vy, vz)
+                        colors.push(vx, vy, vz)
+
+                        if (index !== -1 && (i * this.zScaleUp > index || joined)) {
+                            joined = true
+                            break
+                        }
+                    }
                 }
                 // down
-                for (let i = 0; i < 500 / scale; i++) {
-                    // if (data[i + 3500 / scale] === 42 || joined) {
-                    //     break
-                    // }
-                    if (data[i + 3500 / scale] === 0) {
-                        continue
+                if (data.length > this.upLength + this.arcLength) {
+                    start = this.upLength + this.arcLength
+                    end = data.length
+                    for (let i = start / this.zScaleUp; i < end / this.zScaleUp; i++) {
+                        if (data[i * this.zScaleUp] === 0) {
+                            continue
+                        }
+                        // positions
+                        positions.push(i * this.zScaleUp / this.scaleDown, -this.rOut / this.scaleDown + data[i * this.zScaleUp] * this.yScaleUp, 3)
+                        positions.push(i * this.zScaleUp / this.scaleDown, -this.rOut / this.scaleDown + this.yLength * this.yScaleUp - data[i * this.zScaleUp] * this.yScaleUp, 3)
+                        // colors
+                        const arr = this.heatmap.pickColor(colorIndex)
+
+                        const vx = arr[0] / 255
+                        const vy = arr[1] / 255
+                        const vz = arr[2] / 255
+
+                        colors.push(vx, vy, vz)
+                        colors.push(vx, vy, vz)
+
+                        if (index !== -1 && (i * this.zScaleUp > index || joined)) {
+                            joined = true
+                            break
+                        }
                     }
-                    // positions
-                    const x = rOut + i
-                    positions.push(x, data[i + 3500 / scale], 3)
-                    positions.push(x, 84 - data[i + 3500 / scale], 3)
-                    // colors
-                    const arr = this.heatmap.pickColor(colorIndex)
-
-                    const vx = arr[0] / 255
-                    const vy = arr[1] / 255
-                    const vz = arr[2] / 255
-
-                    colors.push(vx, vy, vz)
-                    colors.push(vx, vy, vz)
                 }
                 colors1 = colors
                 positions1 = positions
@@ -638,16 +667,25 @@
             },
             showVerticalSlice2AtIndex: function (index) {
                 console.log(index)
+                let msg = {
+                    "index": Math.floor(index / 5),
+                    "z_scale": this.zScaleUp,
+                }
                 let message = {
                     type: "generate_vertical_slice2",
-                    content: String(index)
+                    content: JSON.stringify(msg)
                 }
                 if (this.conn !== undefined) {
                     this.conn.send(JSON.stringify(message));
                 }
             },
             showEdgeAtYIndex: function (index) {
-                index = index / this.zScale
+                if (index >= this.zIndexSoFar * this.zScale) {
+                    index = this.zIndexSoFar * this.zScale
+                    this.yIndex = this.zIndexSoFar * this.zScale
+                }
+                index--
+                index = Math.floor(index / this.zScale)
                 console.log("showEdgeAtYIndex", index)
                 this.changeText(index)
             },

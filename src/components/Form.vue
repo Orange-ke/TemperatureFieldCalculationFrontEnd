@@ -211,18 +211,19 @@
                                              placeholder="水温"></el-input-number>
                         </el-form-item>
                     </el-col>
+
                     <el-col :span="12">
                         <el-form-item label="水量">
                             <el-input-number size="small" :precision="2" :step="1"
                                              placeholder="水量"></el-input-number>
                         </el-form-item>
                     </el-col>
-                    <el-col :span="12">
-                        <el-form-item label="气量">
-                            <el-input-number size="small" :precision="2" :step="1"
-                                             placeholder="气量"></el-input-number>
-                        </el-form-item>
-                    </el-col>
+<!--                    <el-col :span="12">-->
+<!--                        <el-form-item label="气量">-->
+<!--                            <el-input-number size="small" :precision="2" :step="1"-->
+<!--                                             placeholder="气量"></el-input-number>-->
+<!--                        </el-form-item>-->
+<!--                    </el-col>-->
                     <el-button class="item-button" v-show="calculationStarted" :disabled="!calculationStarted"
                                size="mini" type="primary"
                                icon="el-icon-right"
