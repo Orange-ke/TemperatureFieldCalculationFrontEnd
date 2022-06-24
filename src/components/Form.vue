@@ -73,67 +73,6 @@
                 </el-form-item>
             </div>
 
-            <!--            <div class="group">-->
-            <!--                <el-form-item label="铜板窄面 进/出水温度">-->
-            <!--                    <el-col :span="10">-->
-            <!--                        <el-form-item prop="narrowSurfaceIn">-->
-            <!--                            <el-input-number size="small" v-model="form.narrowSurfaceIn" :precision="2" :step="1"-->
-            <!--                                             :min="0" :max="100"-->
-            <!--                                             placeholder="进水温度"></el-input-number>-->
-            <!--                        </el-form-item>-->
-            <!--                    </el-col>-->
-            <!--                    <el-col :span="10">-->
-            <!--                        <el-form-item prop="narrowSurfaceOut">-->
-            <!--                            <el-input-number size="small" v-model="form.narrowSurfaceOut" :precision="2" :step="1"-->
-            <!--                                             :min="0" :max="100"-->
-            <!--                                             placeholder="出水温度"></el-input-number>-->
-            <!--                        </el-form-item>-->
-            <!--                    </el-col>-->
-
-            <!--                    <el-button class="item-button" v-show="calculationStarted" :disabled="!calculationStarted"-->
-            <!--                               size="mini" type="primary"-->
-            <!--                               icon="el-icon-right"-->
-            <!--                               @click="changeNarrowSurface"></el-button>-->
-            <!--                </el-form-item>-->
-            <!--                <el-form-item label="铜板宽面 进/出水温度">-->
-            <!--                    <el-col :span="10">-->
-            <!--                        <el-form-item prop="wideSurfaceIn">-->
-            <!--                            <el-input-number size="small" v-model="form.wideSurfaceIn" :precision="2" :step="1"-->
-            <!--                                             :min="0" :max="100"-->
-            <!--                                             placeholder="进水温度"></el-input-number>-->
-            <!--                        </el-form-item>-->
-            <!--                    </el-col>-->
-            <!--                    <el-col :span="10">-->
-            <!--                        <el-form-item prop="wideSurfaceOut">-->
-            <!--                            <el-input-number size="small" v-model="form.wideSurfaceOut" :precision="2" :step="1"-->
-            <!--                                             :min="0" :max="100"-->
-            <!--                                             placeholder="出水温度"></el-input-number>-->
-            <!--                        </el-form-item>-->
-            <!--                    </el-col>-->
-            <!--                    <el-button class="item-button" v-show="calculationStarted" :disabled="!calculationStarted"-->
-            <!--                               size="mini" type="primary"-->
-            <!--                               icon="el-icon-right"-->
-            <!--                               @click="changeWideSurface"></el-button>-->
-            <!--                </el-form-item>-->
-            <!--                <el-form-item label="二冷区喷淋水温度" prop="sprayTemperature">-->
-            <!--                    <el-input-number size="small" v-model="form.sprayTemperature" :precision="2" :step="1" :min="0"-->
-            <!--                                     :max="100"></el-input-number>-->
-            <!--                    <el-button class="item-button" v-show="calculationStarted" :disabled="!calculationStarted"-->
-            <!--                               size="mini" type="primary"-->
-            <!--                               icon="el-icon-right"-->
-            <!--                               @click="changeSprayTemp"></el-button>-->
-            <!--                </el-form-item>-->
-            <!--                <el-form-item label="辊子内冷水温度" prop="rollerWaterTemperature">-->
-            <!--                    <el-input-number size="small" v-model="form.rollerWaterTemperature" :precision="2" :min="0"-->
-            <!--                                     :step="1"-->
-            <!--                                     :max="100"></el-input-number>-->
-            <!--                    <el-button class="item-button" v-show="calculationStarted" :disabled="!calculationStarted"-->
-            <!--                               size="mini" type="primary"-->
-            <!--                               icon="el-icon-right"-->
-            <!--                               @click="changeRollerWaterTemp"></el-button>-->
-            <!--                </el-form-item>-->
-            <!--            </div>-->
-
             <div class="group">
                 <el-form-item label="拉速" prop="dragSpeed">
                     <el-input-number size="small" v-model="form.dragSpeed" :precision="2" :step="0.1" :min="1.5"
@@ -169,10 +108,12 @@
                                              placeholder="水量"></el-input-number>
                         </el-form-item>
                     </el-col>
-                    <el-button class="item-button" v-show="calculationStarted" :disabled="!calculationStarted"
-                               size="mini" type="primary"
-                               icon="el-icon-right"
-                               @click="changeNarrowSurface"></el-button>
+                    <el-col :span="12">
+                        <el-button class="item-button" v-show="calculationStarted" :disabled="!calculationStarted"
+                                   size="mini" type="primary"
+                                   icon="el-icon-right"
+                                   @click="changeNarrowSurface"></el-button>
+                    </el-col>
                 </el-form-item>
                 <el-form-item label="结晶器铜板宽面">
                     <el-col :span="12">
@@ -196,54 +137,70 @@
                                              placeholder="水量"></el-input-number>
                         </el-form-item>
                     </el-col>
-                    <el-button class="item-button" v-show="calculationStarted" :disabled="!calculationStarted"
-                               size="mini" type="primary"
-                               icon="el-icon-right"
-                               @click="changeWideSurface"></el-button>
+                    <el-col :span="12">
+                        <el-button class="item-button" v-show="calculationStarted" :disabled="!calculationStarted"
+                                   size="mini" type="primary"
+                                   icon="el-icon-right"
+                                   @click="changeWideSurface"></el-button>
+                    </el-col>
                 </el-form-item>
             </div>
 
             <div class="group" v-for="item in casterCfg.cooling_zone" :key="item.zone_name">
                 <el-form-item :label="item.zone_name">
-                    <el-col :span="12">
+                    <el-col :span="10">
                         <el-form-item label="喷淋水温度">
                             <el-input-number size="small" :precision="2" :step="1"
+                                             v-model="item.spray_water_temperature"
                                              placeholder="水温"></el-input-number>
                         </el-form-item>
                     </el-col>
-
-                    <el-col :span="12">
-                        <el-form-item label="水量">
-                            <el-input-number size="small" :precision="2" :step="1"
-                                             placeholder="水量"></el-input-number>
+                    <el-col :span="10">
+                        <el-form-item label="内弧中心水量">
+                            <el-input-number size="small" :precision="2" :step="1" v-model="item.inner_arc_volume"
+                                             placeholder="内弧中心水量"></el-input-number>
                         </el-form-item>
                     </el-col>
-<!--                    <el-col :span="12">-->
-<!--                        <el-form-item label="气量">-->
-<!--                            <el-input-number size="small" :precision="2" :step="1"-->
-<!--                                             placeholder="气量"></el-input-number>-->
-<!--                        </el-form-item>-->
-<!--                    </el-col>-->
-                    <el-button class="item-button" v-show="calculationStarted" :disabled="!calculationStarted"
-                               size="mini" type="primary"
-                               icon="el-icon-right"
-                               @click="change(item)"></el-button>
+                    <el-col :span="10">
+                        <el-form-item label="幅切1水量">
+                            <el-input-number size="small" :precision="2" :step="1" v-model="item.fuqie_1_volume"
+                                             placeholder="幅切1水量"></el-input-number>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="10">
+                        <el-form-item label="幅切2水量">
+                            <el-input-number size="small" :precision="2" :step="1" v-model="item.fuqie_2_volume"
+                                             placeholder="幅切2水量"></el-input-number>
+                        </el-form-item>
+                    </el-col>
+                    <el-col v-if="item.narrow_side_volume !== 0" :span="10">
+                        <el-form-item label="窄面水量">
+                            <el-input-number size="small" :precision="2" :step="1" v-model="item.narrow_side_volume"
+                                             placeholder="窄面水量"></el-input-number>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="4">
+                        <el-button class="item-button" v-show="calculationStarted" :disabled="!calculationStarted"
+                                   size="mini" type="primary"
+                                   icon="el-icon-right"
+                                   @click="change(item)"></el-button>
+                    </el-col>
                 </el-form-item>
             </div>
-
+            <!-- 暂时没有用到 -->
             <div class="group">
                 <el-form-item label="计算水表的拉速范围">
-                    <el-col :span="12">
+                    <el-col :span="8">
                         <el-input-number v-model="form.speed2Water.top" size="small" :precision="2"
                                          :step="form.speed2Water.step"
                                          :min="form.speed2Water.bottom" :max="3.00" placeholder="上限"></el-input-number>
                     </el-col>
-                    <el-col :span="12">
+                    <el-col :span="8">
                         <el-input-number v-model="form.speed2Water.bottom" size="small" :precision="2"
                                          :step="form.speed2Water.step"
                                          :max="form.speed2Water.top" placeholder="下限"></el-input-number>
                     </el-col>
-                    <el-col :span="12">
+                    <el-col :span="8">
                         <el-input-number v-model="form.speed2Water.step" size="small" :precision="2" :step="0.1"
                                          :min="0.00"
                                          :max="1.00" placeholder="增量"></el-input-number>
@@ -307,11 +264,11 @@
                     startTemperature: 1530.00,
                     levelHeight: 100,
                     md: {
-                        narrow_surface_in: 30.00,
-                        narrow_surface_out: 38.00,
+                        narrow_surface_in: 33.00,
+                        narrow_surface_out: 40.00,
                         narrow_surface_volume: 500.00,
-                        wide_surface_in: 30.00,
-                        wide_surface_out: 38.00,
+                        wide_surface_in: 33.00,
+                        wide_surface_out: 40.00,
                         wide_surface_volume: 3000.00,
                     },
                     dragSpeed: 1.50,
@@ -352,6 +309,7 @@
         },
         methods: {
             change: function (item) {
+                // todo
                 console.log(item)
             },
             selectCaster: function (caster) {
@@ -410,12 +368,25 @@
                 console.log(this.form)
                 this.$refs[formName].validate((valid) => {
                     if (valid) {
+                        let coolingWaterSections = []
+                        for (let i = 0; i < this.casterCfg.cooling_zone.length; i++) {
+                            coolingWaterSections.push(
+                                {
+                                    spray_water_temperature: this.casterCfg.cooling_zone[i].spray_water_temperature,
+                                    inner_arc_water_volume: this.casterCfg.cooling_zone[i].inner_arc_volume,
+                                    narrow_side_water_volume: this.casterCfg.cooling_zone[i].narrow_side_volume,
+                                }
+                            )
+                        }
                         let env = {
+                            level_height: this.form.levelHeight,
                             steel_value: this.form.steelValue,
                             start_temperature: this.form.startTemperature,
                             md: this.form.md,
                             drag_speed: this.form.dragSpeed,
-                            coordinate: this.casterCfg.coordinate
+                            coordinate: this.casterCfg.coordinate,
+                            secondary_cooling_water_cfg: coolingWaterSections,
+                            cooling_zone_cfg: this.casterCfg.cooling_zone
                         }
                         let message = {
                             type: "env",

@@ -53,24 +53,12 @@
                     </div>
                 </div>
             </el-tab-pane>
-            <el-tab-pane label="纵切面温度变化曲线">
+            <el-tab-pane label="温度变化曲线">
                 <v-chart class="chart" :option="option"></v-chart>
                 <div class="bottom">
-                    <div class="slider_container">
-                        <div class="block block1 slider-demo-block">
-                            <span class="demonstration">距离铸坯边界距离mm</span>
-                            <el-slider
-                                    :max="max"
-                                    :min="1"
-                                    v-model="index1"
-                                    :step="1">
-                            </el-slider>
-                        </div>
-                    </div>
                     <div class="operation">
-                        <el-input-number size="normal" v-model="index1" :step="1" :max="max" :min="1"></el-input-number>
                         <el-button size="normal" style="margin-left: 10px;" round type="primary"
-                                   @click="showVerticalSlice1AtIndex(index1-1)">查看对应距离纵切片温度曲线数据
+                                   @click="showVerticalSlice1AtIndex()">查看温度曲线数据
                         </el-button>
                     </div>
                 </div>
@@ -108,7 +96,6 @@
             return {
                 max: 1,
                 maxZLength: 1,
-                index1: 1,
                 option: {
                     tooltip: {
                         trigger: 'axis',
@@ -117,7 +104,7 @@
                     legend: {
                         orient: "vertical",
                         left: "right",
-                        data: ["沿外弧方向", "沿中轴方向"]
+                        data: ["宽面表面中心线", "铸坯中心线", "角部", "窄面表面中心线"]
                     },
                     xAxis: [
                         {
@@ -145,22 +132,41 @@
                     ],
                     series: [
                         {
-                            name: "沿外弧方向",
+                            name: "宽面表面中心线",
                             type: 'line',
                             smooth: true,
+                            color: "#FFC107",
                             xAxisIndex: 0,
                             yAxisIndex: 0,
                             data: []
                         },
-
                         {
-                            name: "沿中轴方向",
+                            name: "铸坯中心线",
                             type: 'line',
                             smooth: true,
+                            color: "#FF5252",
                             xAxisIndex: 0,
                             yAxisIndex: 0,
                             data: []
                         },
+                        {
+                            name: "角部",
+                            type: 'line',
+                            smooth: true,
+                            color: "#2196F3",
+                            xAxisIndex: 0,
+                            yAxisIndex: 0,
+                            data: []
+                        },
+                        {
+                            name: "窄面表面中心线",
+                            type: 'line',
+                            smooth: true,
+                            color: "#4CAF50",
+                            xAxisIndex: 0,
+                            yAxisIndex: 0,
+                            data: []
+                        }
                     ]
                 },
                 container: undefined,
@@ -183,8 +189,9 @@
                 xScale: 5,
                 yScale: 5,
                 zScaleUp: 5,
-                yScaleUp: 2,
+                yScaleUp: 4,
                 scaleDown: 1,
+                pointSize: 13.5,
                 zIndexSoFar: 0,
                 rOut: 0,
                 rIn: 0,
@@ -278,8 +285,11 @@
 
                 this.$root.$on("vertical_slice1_generated", (data) => {
                     console.log(data)
-                    this.option.series[0].data = data.outer
-                    this.option.series[1].data = data.inner
+                    this.option.series[0].data = data.center_outer
+                    this.option.series[1].data = data.center_inner
+                    this.option.series[2].data = data.edge_outer
+                    this.option.series[3].data = data.edge_inner
+
                 })
 
                 this.$root.$on("vertical_slice2_generated", (data) => {
@@ -409,51 +419,90 @@
                 let positions = []
                 // up
                 for (let i = 0; i < this.upLength / this.zScaleUp; i++) {
-                    for (let j = 0; j < this.yLength; j++) {
+                    let left = 0, right = this.yLength - 1
+                    while (left < right) {
                         // positions
-                        const x = -this.rOut / this.scaleDown + j * this.yScaleUp
-                        const y = (this.upLength - 1 - i * this.zScaleUp) / this.scaleDown
-                        positions.push(x, y, 0)
+                        const x1 = -this.rOut / this.scaleDown + left * this.yScaleUp
+                        const y1 = (this.upLength - 1 - i * this.zScaleUp) / this.scaleDown
+                        positions.push(x1, y1, 0)
                         // colors
-                        const arr = this.heatmap.pickColor(1)
+                        const arr1 = this.heatmap.pickColor(1)
+                        const vx1 = arr1[0] / 255
+                        const vy1 = arr1[1] / 255
+                        const vz1 = arr1[2] / 255
+                        colors.push(vx1, vy1, vz1)
 
-                        const vx = arr[0] / 255
-                        const vy = arr[1] / 255
-                        const vz = arr[2] / 255
+                        // positions
+                        const x2 = -this.rOut / this.scaleDown + right * this.yScaleUp
+                        const y2 = (this.upLength - 1 - i * this.zScaleUp) / this.scaleDown
+                        positions.push(x2, y2, 0)
+                        // colors
+                        const arr2 = this.heatmap.pickColor(1)
+                        const vx2 = arr2[0] / 255
+                        const vy2 = arr2[1] / 255
+                        const vz2 = arr2[2] / 255
+                        colors.push(vx2, vy2, vz2)
 
-                        colors.push(vx, vy, vz)
+                        left++
+                        right--
                     }
                 }
                 // arc
                 for (let i = 0; i < this.arcLength / this.zScaleUp; i++) {
-                    for (let j = 0; j < this.yLength; j++) {
+                    let left = 0, right = this.yLength - 1
+                    while (left < right) {
                         // positions
-                        let xy = this.calculateXY(0, 0, rOut / this.scaleDown - j * this.yScaleUp, 90 * i * this.zScaleUp / this.arcLength * Math.PI / 180)
-                        const x = xy.x2
-                        const y = xy.y2
-                        positions.push(x, y, 0)
+                        let xy1 = this.calculateXY(0, 0, rOut / this.scaleDown - left * this.yScaleUp, 90 * i * this.zScaleUp / this.arcLength * Math.PI / 180)
+                        const x1 = xy1.x2
+                        const y1 = xy1.y2
+                        positions.push(x1, y1, 0)
                         // colors
-                        const arr = this.heatmap.pickColor(1)
-                        const vx = arr[0] / 255
-                        const vy = arr[1] / 255
-                        const vz = arr[2] / 255
+                        const arr1 = this.heatmap.pickColor(1)
+                        const vx1 = arr1[0] / 255
+                        const vy1 = arr1[1] / 255
+                        const vz1 = arr1[2] / 255
+                        colors.push(vx1, vy1, vz1)
 
-                        colors.push(vx, vy, vz)
+                        // positions
+                        let xy2 = this.calculateXY(0, 0, rOut / this.scaleDown - right * this.yScaleUp, 90 * i * this.zScaleUp / this.arcLength * Math.PI / 180)
+                        const x2 = xy2.x2
+                        const y2 = xy2.y2
+                        positions.push(x2, y2, 0)
+                        // colors
+                        const arr2 = this.heatmap.pickColor(1)
+                        const vx2 = arr2[0] / 255
+                        const vy2 = arr2[1] / 255
+                        const vz2 = arr2[2] / 255
+                        colors.push(vx2, vy2, vz2)
+
+                        left++
+                        right--
                     }
                 }
                 // down
                 for (let i = 0; i < this.downLength / this.zScaleUp; i++) {
-                    for (let j = 0; j < this.yLength; j++) {
+                    let left = 0, right = this.yLength - 1
+                    while (left < right) {
                         // positions
-                        positions.push(i * this.zScaleUp / this.scaleDown, (-this.rOut / this.scaleDown + j * this.yScaleUp), 0)
+                        positions.push(i * this.zScaleUp / this.scaleDown, (-this.rOut / this.scaleDown + left * this.yScaleUp), 0)
                         // colors
-                        const arr = this.heatmap.pickColor(1)
+                        const arr1 = this.heatmap.pickColor(1)
+                        const vx1 = arr1[0] / 255
+                        const vy1 = arr1[1] / 255
+                        const vz1 = arr1[2] / 255
+                        colors.push(vx1, vy1, vz1)
 
-                        const vx = arr[0] / 255
-                        const vy = arr[1] / 255
-                        const vz = arr[2] / 255
+                        // positions
+                        positions.push(i * this.zScaleUp / this.scaleDown, (-this.rOut / this.scaleDown + right * this.yScaleUp), 0)
+                        // colors
+                        const arr2 = this.heatmap.pickColor(1)
+                        const vx2 = arr2[0] / 255
+                        const vy2 = arr2[1] / 255
+                        const vz2 = arr2[2] / 255
+                        colors.push(vx2, vy2, vz2)
 
-                        colors.push(vx, vy, vz)
+                        left++
+                        right--
                     }
                 }
                 this.colors = colors
@@ -462,61 +511,87 @@
                 geometry.setAttribute('position', new THREE.Float32BufferAttribute(this.positions, 3));
                 geometry.setAttribute('color', new THREE.Float32BufferAttribute(this.colors, 3));
                 geometry.computeBoundingSphere();
-                const material = new THREE.PointsMaterial({size: 10.8, vertexColors: true});
+                const material = new THREE.PointsMaterial({size: this.pointSize, vertexColors: true});
                 this.points = new THREE.Points(geometry, material);
                 this.group.add(this.points)
             },
             buildShapes: function (data) {
-                console.log(data)
                 let colors = []
                 let n = data.length
                 let m = data[0].length
-                console.log(n, m)
                 let start = 0
                 let end = Math.min(this.upLength / this.zScaleUp, n)
                 // up
                 for (let i = start; i < end; i++) {
-                    for (let j = 0; j < m; j++) {
+                    let left = 0, right = m - 1
+                    while (left < right) {
                         // colors
-                        const arr = this.heatmap.pickColor(Math.floor(data[i][j]) % this.originTemperature)
+                        const arr1 = this.heatmap.pickColor(Math.floor(data[i][left]) % this.originTemperature)
+                        const vx1 = arr1[0] / 255
+                        const vy1 = arr1[1] / 255
+                        const vz1 = arr1[2] / 255
+                        colors.push(vx1, vy1, vz1)
 
-                        const vx = arr[0] / 255
-                        const vy = arr[1] / 255
-                        const vz = arr[2] / 255
+                        // colors
+                        const arr2 = this.heatmap.pickColor(Math.floor(data[i][right]) % this.originTemperature)
+                        const vx2 = arr2[0] / 255
+                        const vy2 = arr2[1] / 255
+                        const vz2 = arr2[2] / 255
+                        colors.push(vx2, vy2, vz2)
 
-                        colors.push(vx, vy, vz)
+                        left++
+                        right--
                     }
                 }
                 // arc
                 if (n * this.zScaleUp > this.upLength) {
-                    start = this.upLength / this.zScaleUp
+                    start = Math.floor(this.upLength / this.zScaleUp)
                     end = Math.min((this.upLength + this.arcLength) / this.zScaleUp, n)
                     for (let i = start; i < end; i++) {
-                        for (let j = 0; j < m; j++) {
+                        let left = 0, right = m - 1
+                        while (left < right) {
                             // colors
-                            const arr = this.heatmap.pickColor(Math.floor(data[i][j]) % this.originTemperature)
-                            const vx = arr[0] / 255
-                            const vy = arr[1] / 255
-                            const vz = arr[2] / 255
+                            const arr1 = this.heatmap.pickColor(Math.floor(data[i][left]) % this.originTemperature)
+                            const vx1 = arr1[0] / 255
+                            const vy1 = arr1[1] / 255
+                            const vz1 = arr1[2] / 255
+                            colors.push(vx1, vy1, vz1)
 
-                            colors.push(vx, vy, vz)
+                            // colors
+                            const arr2 = this.heatmap.pickColor(Math.floor(data[i][right]) % this.originTemperature)
+                            const vx2 = arr2[0] / 255
+                            const vy2 = arr2[1] / 255
+                            const vz2 = arr2[2] / 255
+                            colors.push(vx2, vy2, vz2)
+
+                            left++
+                            right--
                         }
                     }
                 }
                 // down
                 if (n * this.zScaleUp > this.upLength + this.arcLength) {
-                    start = (this.upLength + this.arcLength) / this.zScaleUp
+                    start = Math.floor((this.upLength + this.arcLength) / this.zScaleUp)
                     end = n
                     for (let i = start; i < end; i++) {
-                        for (let j = 0; j < m; j++) {
+                        let left = 0, right = m - 1
+                        while (left < right) {
                             // colors
-                            const arr = this.heatmap.pickColor(Math.floor(data[i][j]) % this.originTemperature)
+                            const arr1 = this.heatmap.pickColor(Math.floor(data[i][left]) % this.originTemperature)
+                            const vx1 = arr1[0] / 255
+                            const vy1 = arr1[1] / 255
+                            const vz1 = arr1[2] / 255
+                            colors.push(vx1, vy1, vz1)
 
-                            const vx = arr[0] / 255
-                            const vy = arr[1] / 255
-                            const vz = arr[2] / 255
+                            // colors
+                            const arr2 = this.heatmap.pickColor(Math.floor(data[i][right]) % this.originTemperature)
+                            const vx2 = arr2[0] / 255
+                            const vy2 = arr2[1] / 255
+                            const vz2 = arr2[2] / 255
+                            colors.push(vx2, vy2, vz2)
 
-                            colors.push(vx, vy, vz)
+                            left++
+                            right--
                         }
                     }
                 }
@@ -530,7 +605,7 @@
                 geometry1.setAttribute('position', new THREE.Float32BufferAttribute(colors, 3));
                 geometry1.setAttribute('color', new THREE.Float32BufferAttribute(positions, 3));
                 geometry1.computeBoundingSphere();
-                const material = new THREE.PointsMaterial({size: 7.5, vertexColors: true});
+                const material = new THREE.PointsMaterial({size: this.pointSize / 1.2, vertexColors: true});
                 this.curvePointsLiquid = new THREE.Points(geometry1, material);
                 this.group.add(this.curvePointsLiquid)
 
@@ -543,23 +618,23 @@
                 this.group.add(this.curvePointsSolid)
             },
             buildCurve: function (rOut, rIn, data, colorIndex, geometry, colors1, positions1, index) {
-                console.log(data)
                 let positions = []
                 let colors = []
                 let joined = false
                 // up
                 let start = 0
-                let end = Math.min(this.upLength, data.length)
+                let end = Math.floor(Math.min(this.upLength, data.length))
                 for (let i = start; i < end / this.zScaleUp; i++) {
                     if (data[i * this.zScaleUp] === 0) {
+                        console.log(data[i * this.zScaleUp], "hi there")
                         continue
                     }
                     // positions
-                    const x1 = -this.rOut / this.scaleDown + data[i * this.zScaleUp] * this.yScaleUp
-                    const x2 = -this.rOut / this.scaleDown + this.yLength * this.yScaleUp - data[i * this.zScaleUp] * this.yScaleUp
+                    const x1 = -this.rOut / this.scaleDown + data[i * this.zScaleUp] * this.yScaleUp - this.pointSize / (2 * this.yScaleUp)
+                    const x2 = -this.rOut / this.scaleDown + this.yLength * this.yScaleUp - data[i * this.zScaleUp] * this.yScaleUp - this.pointSize / (2 * this.yScaleUp)
                     const y = (this.upLength - 1 - i * this.zScaleUp) / this.scaleDown
-                    positions.push(x1, y, 3)
-                    positions.push(x2, y, 3)
+                    positions.push(x1, y, 0)
+                    positions.push(x2, y, 0)
                     // colors
                     const arr = this.heatmap.pickColor(colorIndex)
 
@@ -577,17 +652,18 @@
                 }
                 // arc
                 if (data.length > this.upLength) {
-                    let start = this.upLength
-                    let end = Math.min(this.upLength + this.arcLength, data.length)
+                    let zStart = 0
+                    let start = Math.floor(this.upLength)
+                    let end = Math.floor(Math.min(this.upLength + this.arcLength, data.length))
                     for (let i = start / this.zScaleUp; i < end / this.zScaleUp; i++) {
                         if (data[i * this.zScaleUp] === 0) {
                             continue
                         }
                         // positions
-                        let xy = this.calculateXY(0, 0, rOut / this.scaleDown - data[i * this.zScaleUp] * this.yScaleUp, 90 * i * this.zScaleUp / this.arcLength * Math.PI / 180)
-                        positions.push(xy.x2, xy.y2, 3)
-                        let xy2 = this.calculateXY(0, 0, rOut / this.scaleDown - this.yLength * this.yScaleUp + data[i * this.zScaleUp] * this.yScaleUp, 90 * i * this.zScaleUp / this.arcLength * Math.PI / 180)
-                        positions.push(xy2.x2, xy2.y2, 3)
+                        let xy = this.calculateXY(0, 0, rOut / this.scaleDown - data[i * this.zScaleUp] * this.yScaleUp, 90 * zStart * this.zScaleUp / this.arcLength * Math.PI / 180)
+                        positions.push(xy.x2, xy.y2, 0)
+                        let xy2 = this.calculateXY(0, 0, rOut / this.scaleDown - this.yLength * this.yScaleUp + data[i * this.zScaleUp] * this.yScaleUp, 90 * zStart * this.zScaleUp / this.arcLength * Math.PI / 180)
+                        positions.push(xy2.x2, xy2.y2, 0)
                         // colors
                         const arr = this.heatmap.pickColor(colorIndex)
                         const vx = arr[0] / 255
@@ -596,8 +672,9 @@
 
                         colors.push(vx, vy, vz)
                         colors.push(vx, vy, vz)
-
+                        zStart++
                         if (index !== -1 && (i * this.zScaleUp > index || joined)) {
+                            console.log("join", "??????")
                             joined = true
                             break
                         }
@@ -605,15 +682,16 @@
                 }
                 // down
                 if (data.length > this.upLength + this.arcLength) {
-                    start = this.upLength + this.arcLength
+                    let xStart = 0
+                    start = Math.floor(this.upLength + this.arcLength)
                     end = data.length
                     for (let i = start / this.zScaleUp; i < end / this.zScaleUp; i++) {
                         if (data[i * this.zScaleUp] === 0) {
                             continue
                         }
                         // positions
-                        positions.push(i * this.zScaleUp / this.scaleDown, -this.rOut / this.scaleDown + data[i * this.zScaleUp] * this.yScaleUp, 3)
-                        positions.push(i * this.zScaleUp / this.scaleDown, -this.rOut / this.scaleDown + this.yLength * this.yScaleUp - data[i * this.zScaleUp] * this.yScaleUp, 3)
+                        positions.push(xStart * this.zScaleUp / this.scaleDown, -this.rOut / this.scaleDown + data[i * this.zScaleUp] * this.yScaleUp, 0)
+                        positions.push(xStart * this.zScaleUp / this.scaleDown, -this.rOut / this.scaleDown + this.yLength * this.yScaleUp - data[i * this.zScaleUp] * this.yScaleUp, 0)
                         // colors
                         const arr = this.heatmap.pickColor(colorIndex)
 
@@ -623,7 +701,7 @@
 
                         colors.push(vx, vy, vz)
                         colors.push(vx, vy, vz)
-
+                        xStart++
                         if (index !== -1 && (i * this.zScaleUp > index || joined)) {
                             joined = true
                             break
@@ -654,12 +732,10 @@
             render: function () {
                 this.renderer.render(this.scene, this.camera)
             },
-            showVerticalSlice1AtIndex: function (index) {
-                index = Math.floor(index / 5)
-                console.log(index)
+            showVerticalSlice1AtIndex: function () {
                 let message = {
                     type: "generate_vertical_slice1",
-                    content: String(index)
+                    content: ""
                 }
                 if (this.conn !== undefined) {
                     this.conn.send(JSON.stringify(message));
@@ -686,7 +762,6 @@
                 }
                 index--
                 index = Math.floor(index / this.zScale)
-                console.log("showEdgeAtYIndex", index)
                 this.changeText(index)
             },
             createPalette: function () {

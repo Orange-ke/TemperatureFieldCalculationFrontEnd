@@ -43,8 +43,8 @@
 <script>
     import Form from './components/Form'
     import ThreeDField from "./components/ThreeDField";
-    import SliceShow from "./components/SliceShow";
-    import Curves from "./components/Curves";
+    import SliceShow from "./components/Slice";
+    import Curves from "./components/VerticalSlice";
 
     export default {
         components: {
